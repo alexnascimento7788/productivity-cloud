@@ -1,0 +1,109 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* ── Dark theme (default) ─────────────────────────────────────────────────── */
+:root {
+  --bg-primary-rgb:     10 14 26;
+  --bg-secondary-rgb:   17 24 39;
+  --bg-tertiary-rgb:    31 41 55;
+  --accent-blue-rgb:    59 130 246;
+  --accent-green-rgb:   16 185 129;
+  --accent-amber-rgb:   245 158 11;
+  --accent-red-rgb:     239 68 68;
+  --text-primary-rgb:   249 250 251;
+  --text-secondary-rgb: 156 163 175;
+  --border-color-rgb:   31 41 55;
+
+  /* legado (usado em body e leaflet abaixo) */
+  --bg-primary:     #0a0e1a;
+  --bg-secondary:   #111827;
+  --bg-tertiary:    #1f2937;
+  --text-primary:   #f9fafb;
+  --text-secondary: #9ca3af;
+  --border:         #1f2937;
+  --accent-blue:    #3b82f6;
+}
+
+/* ── Light theme ──────────────────────────────────────────────────────────── */
+:root.light {
+  --bg-primary-rgb:     248 250 252;
+  --bg-secondary-rgb:   255 255 255;
+  --bg-tertiary-rgb:    241 245 249;
+  --accent-blue-rgb:    37 99 235;
+  --accent-green-rgb:   5 150 105;
+  --accent-amber-rgb:   217 119 6;
+  --accent-red-rgb:     220 38 38;
+  --text-primary-rgb:   15 23 42;
+  --text-secondary-rgb: 100 116 139;
+  --border-color-rgb:   226 232 240;
+
+  --bg-primary:     #f8fafc;
+  --bg-secondary:   #ffffff;
+  --bg-tertiary:    #f1f5f9;
+  --text-primary:   #0f172a;
+  --text-secondary: #64748b;
+  --border:         #e2e8f0;
+  --accent-blue:    #2563eb;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+.font-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+
+/* ── Leaflet dark ─────────────────────────────────────────────────────────── */
+.leaflet-container { background: var(--bg-secondary); }
+.leaflet-popup-content-wrapper {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+.leaflet-popup-tip { background: var(--bg-secondary); }
+.leaflet-control-zoom a {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+.leaflet-control-zoom a:hover { background: var(--bg-tertiary); }
+.leaflet-control-attribution {
+  background: rgba(var(--bg-secondary-rgb) / 0.85);
+  color: var(--text-secondary);
+}
+.leaflet-control-attribution a { color: var(--accent-blue); }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.3s ease; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in { animation: slideIn 0.25s ease; }

@@ -1,0 +1,7 @@
+# Nunca enviar ao deploy
+.env
+.env.*
+.claude
+scripts
+node_modules
+dist
