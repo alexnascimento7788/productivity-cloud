@@ -1,11 +1,12 @@
 import React from 'react'
-import { useAuth } from '../App'
+import { useAuth, useData } from '../App'
 import PageHeader from '../components/PageHeader'
 import ImportPlanilha from '../components/ImportPlanilha'
 import ImportGeoCsv from '../components/ImportGeoCsv'
 
 export default function Importar() {
   const { session, companyFlags } = useAuth()
+  const { reloadCidades } = useData()
 
   return (
     <div className="p-4 md:p-6 animate-fade-in space-y-8">
@@ -20,7 +21,7 @@ export default function Importar() {
         <div>
           <PageHeader title="Importar Vendas Cidades" />
           <div className="max-w-2xl">
-            <ImportGeoCsv session={session} onImported={() => {}} />
+            <ImportGeoCsv session={session} onImported={reloadCidades} />
           </div>
         </div>
       )}

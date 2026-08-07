@@ -181,7 +181,7 @@ export default function Cidades() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border-color">
-                  {['Cidade (ERP)', 'Vincular ao município IBGE', ''].map((h, i) => (
+                  {['Cidade (ERP)', 'Modo', 'Vincular ao município IBGE ou informar coordenadas'].map((h, i) => (
                     <th key={i} className="px-4 py-3 text-left text-text-secondary font-medium">{h}</th>
                   ))}
                 </tr>
@@ -189,23 +189,36 @@ export default function Cidades() {
               <tbody>
                 {pendentes.map(d => (
                   <tr key={d.cidade_origem} className="border-b border-border-color/50">
-                    <td className="px-4 py-3 text-text-primary font-medium">{d.cidade_origem}</td>
+                    <td className="px-4 py-3 text-text-primary font-medium align-top">{d.cidade_origem}</td>
+                    <td className="px-4 py-3 w-[200px] align-top">
+                      <div className="inline-flex rounded-lg border border-border-color overflow-hidden text-xs">
+                        <button
+                          onClick={() => setCoordMode(null)}
+                          disabled={!!busyCity}
+                          className={`px-2.5 py-1.5 transition-colors ${coordMode !== d.cidade_origem ? 'bg-accent-blue text-white' : 'text-text-secondary hover:bg-bg-tertiary'}`}
+                        >
+                          Buscar no IBGE
+                        </button>
+                        <button
+                          onClick={() => setCoordMode(d.cidade_origem)}
+                          disabled={!!busyCity}
+                          className={`px-2.5 py-1.5 transition-colors ${coordMode === d.cidade_origem ? 'bg-accent-blue text-white' : 'text-text-secondary hover:bg-bg-tertiary'}`}
+                        >
+                          Não é município (distrito/povoado)
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 w-[340px]">
                       {busyCity === d.cidade_origem ? (
                         <div className="flex items-center gap-2 text-xs text-text-secondary"><Loader2 size={13} className="animate-spin" /> Salvando...</div>
                       ) : coordMode === d.cidade_origem ? (
-                        <ManualCoords onSave={(lat, lng) => salvarCoords(d, lat, lng)} busy={!!busyCity} />
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-text-secondary">Informe a lat/lon manualmente (ex: coordenadas do Google Maps) — para distritos, povoados e localidades que não têm código IBGE próprio.</p>
+                          <ManualCoords onSave={(lat, lng) => salvarCoords(d, lat, lng)} busy={!!busyCity} />
+                        </div>
                       ) : (
                         <IbgePicker onSelect={c => vincular(d, c)} busy={!!busyCity} />
                       )}
-                    </td>
-                    <td className="px-4 py-3 w-[170px]">
-                      <button
-                        onClick={() => setCoordMode(coordMode === d.cidade_origem ? null : d.cidade_origem)}
-                        className="text-xs text-text-secondary hover:text-accent-blue whitespace-nowrap"
-                      >
-                        {coordMode === d.cidade_origem ? 'Buscar no IBGE' : 'Coordenadas manuais'}
-                      </button>
                     </td>
                   </tr>
                 ))}

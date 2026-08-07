@@ -271,6 +271,21 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
               <p className="text-sm font-bold text-text-primary">SIXHours</p>
             </div>
 
+            {/* Versão 4.7 */}
+            <div className="px-4 py-4 border-b border-border-color">
+              <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.7</p>
+              <ul className="space-y-2 text-xs text-text-secondary">
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Tratamento de Cidades:</span> opção "não é município (distrito/povoado)" com coordenadas manuais fica visível lado a lado com a busca IBGE</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Import Vendas Cidades:</span> lista de cidades pendentes atualiza automaticamente após o import, sem precisar de F5</span>
+                </li>
+              </ul>
+            </div>
+
             {/* Versão 4.6 */}
             <div className="px-4 py-4 border-b border-border-color">
               <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.6</p>
