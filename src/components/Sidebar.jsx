@@ -271,6 +271,17 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
               <p className="text-sm font-bold text-text-primary">SIXHours</p>
             </div>
 
+            {/* Versão 4.7.1 */}
+            <div className="px-4 py-4 border-b border-border-color">
+              <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.7.1</p>
+              <ul className="space-y-2 text-xs text-text-secondary">
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Popup Vendas Cidades:</span> layout corrigido — "Rota - Nome", Região, Cidade e valores em linhas separadas</span>
+                </li>
+              </ul>
+            </div>
+
             {/* Versão 4.7 */}
             <div className="px-4 py-4 border-b border-border-color">
               <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.7</p>

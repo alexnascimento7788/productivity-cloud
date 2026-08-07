@@ -241,8 +241,9 @@ export default function GeoVendasCidades() {
 
     const popupHtml = v => `
       <div style="font-family:Inter,sans-serif;min-width:200px;">
-        <div style="font-weight:700;font-size:14px;color:#f9fafb;margin-bottom:2px;">${setorNomes[v.setor_rota_norm] || v.setor_rota_norm} - ${v.cidade_origem}</div>
-        <div style="color:#9ca3af;font-size:12px;margin-bottom:8px;">${v.regiao || ''}</div>
+        <div style="font-weight:700;font-size:14px;color:#f9fafb;margin-bottom:2px;">Rota - ${setorNomes[v.setor_rota_norm] || v.setor_rota_norm}</div>
+        <div style="color:#9ca3af;font-size:12px;">${v.regiao || ''}</div>
+        <div style="color:#f9fafb;font-size:13px;font-weight:600;margin-bottom:8px;">${v.cidade_origem}</div>
         ${v.sem_venda ? '<div style="color:#f59e0b;font-size:11px;margin-bottom:6px;">⚠ Sem venda no período</div>' : ''}
         <div style="border-top:1px solid #1f2937;padding-top:6px;">
           <span style="color:#9ca3af;font-size:12px;">Venda ${formatMesReferencia(v.mes_referencia)}: </span>
