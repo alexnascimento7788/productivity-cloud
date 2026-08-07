@@ -35,7 +35,7 @@ function createDotIcon(L, color, size, opacity) {
   return L.divIcon({ html, className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2] })
 }
 
-function DraggableLegend({ setorColors, onClose }) {
+function DraggableLegend({ title, colors, onClose }) {
   const [pos, setPos] = useState({ x: 16, y: 80 })
   const dragging = useRef(false)
   const offset = useRef({ x: 0, y: 0 })
@@ -63,11 +63,11 @@ function DraggableLegend({ setorColors, onClose }) {
       className="bg-bg-secondary/95 border border-border-color rounded-lg shadow-xl backdrop-blur-sm"
     >
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-color cursor-grab active:cursor-grabbing" onMouseDown={onMouseDown}>
-        <span className="text-xs font-semibold text-text-primary">Setores/Rotas</span>
+        <span className="text-xs font-semibold text-text-primary">{title}</span>
         <button onClick={onClose} className="text-text-secondary/50 hover:text-text-secondary text-xs ml-4 leading-none">✕</button>
       </div>
       <div className="p-2 space-y-1 max-h-60 overflow-y-auto min-w-[170px]">
-        {Object.entries(setorColors).map(([nome, color]) => (
+        {Object.entries(colors).map(([nome, color]) => (
           <div key={nome} className="flex items-center gap-2 px-1 py-0.5">
             <span style={{ background: color }} className="w-3 h-3 rounded-full shrink-0 border border-white/20" />
             <span className="text-xs text-text-secondary">{nome}</span>
@@ -78,7 +78,7 @@ function DraggableLegend({ setorColors, onClose }) {
   )
 }
 
-function MultiSelectSetores({ setores, setorColors, selected, onChange }) {
+function MultiSelectFilter({ label, allLabel, unitSingular, unitPlural, items, selected, onChange }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -88,20 +88,20 @@ function MultiSelectSetores({ setores, setorColors, selected, onChange }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const label = selected.length === 0 ? 'Todos os setores/rotas' : `${selected.length} setor${selected.length > 1 ? 'es' : ''}/rota${selected.length > 1 ? 's' : ''}`
+  const buttonLabel = selected.length === 0 ? allLabel : `${selected.length} ${selected.length > 1 ? unitPlural : unitSingular}`
 
-  function toggle(nomeNorm) {
-    onChange(selected.includes(nomeNorm) ? selected.filter(n => n !== nomeNorm) : [...selected, nomeNorm])
+  function toggle(value) {
+    onChange(selected.includes(value) ? selected.filter(v => v !== value) : [...selected, value])
   }
 
   return (
     <div ref={ref} className="relative">
-      <label className="block text-xs text-text-secondary mb-1">Setores/Rotas</label>
+      <label className="block text-xs text-text-secondary mb-1">{label}</label>
       <button
         onClick={() => setOpen(o => !o)}
         className="flex items-center gap-2 bg-bg-tertiary border border-border-color text-text-secondary text-sm rounded-lg px-3 py-2 min-w-[190px] hover:border-accent-blue/50 transition-colors"
       >
-        <span className="flex-1 text-left">{label}</span>
+        <span className="flex-1 text-left">{buttonLabel}</span>
         <span className="text-text-secondary/50">▾</span>
       </button>
       {open && (
@@ -109,13 +109,13 @@ function MultiSelectSetores({ setores, setorColors, selected, onChange }) {
           <div className="p-2 border-b border-border-color flex gap-2">
             <button onClick={() => onChange([])} className="text-xs text-accent-blue hover:underline">Limpar seleção</button>
             <span className="text-text-secondary/30">|</span>
-            <button onClick={() => onChange(setores.map(s => s.nome_norm))} className="text-xs text-text-secondary hover:text-text-primary">Selecionar todos</button>
+            <button onClick={() => onChange(items.map(it => it.value))} className="text-xs text-text-secondary hover:text-text-primary">Selecionar todos</button>
           </div>
-          {setores.map(s => (
-            <label key={s.nome_norm} className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary cursor-pointer">
-              <input type="checkbox" checked={selected.includes(s.nome_norm)} onChange={() => toggle(s.nome_norm)} className="accent-accent-blue" />
-              <span style={{ background: setorColors[s.nome_norm] }} className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/20" />
-              <span className="flex-1">{s.nome}</span>
+          {items.map(it => (
+            <label key={it.value} className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary cursor-pointer">
+              <input type="checkbox" checked={selected.includes(it.value)} onChange={() => toggle(it.value)} className="accent-accent-blue" />
+              <span style={{ background: it.color }} className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/20" />
+              <span className="flex-1">{it.nome}</span>
             </label>
           ))}
         </div>
@@ -170,6 +170,8 @@ export default function GeoVendasCidades() {
   const [showLegend, setShowLegend] = useState(false)
   const [showSemVenda, setShowSemVenda] = useState(false)
   const [filterSetores, setFilterSetores] = useState([])
+  const [filterRegioes, setFilterRegioes] = useState([])
+  const [colorMode, setColorMode] = useState('regiao')
   const [filtersCollapsed, setFiltersCollapsed] = useState(false)
 
   useEffect(() => { import('leaflet').then(mod => { L = mod.default; setLeafletReady(true) }) }, [])
@@ -207,13 +209,24 @@ export default function GeoVendasCidades() {
     return Object.fromEntries(setores.map(s => [s.nome_norm, s.nome]))
   }, [setores])
 
+  const regioes = useMemo(() => {
+    const set = new Set()
+    vendas.forEach(v => { if (v.regiao) set.add(v.regiao) })
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [vendas])
+
+  const regiaoColors = useMemo(() => {
+    return Object.fromEntries(regioes.map((r, i) => [r, PALETTE[i % PALETTE.length]]))
+  }, [regioes])
+
   const visibleVendas = useMemo(() => {
     return vendas.filter(v =>
       v.latitude != null && v.longitude != null
       && (showSemVenda || !v.sem_venda)
       && (filterSetores.length === 0 || filterSetores.includes(v.setor_rota_norm))
+      && (filterRegioes.length === 0 || filterRegioes.includes(v.regiao))
     )
-  }, [vendas, showSemVenda, filterSetores])
+  }, [vendas, showSemVenda, filterSetores, filterRegioes])
 
   // O container do mapa é sempre renderizado (nunca some por causa dos dados),
   // então este efeito só depende de leafletReady e roda uma única vez.
@@ -261,7 +274,7 @@ export default function GeoVendasCidades() {
       const end = Math.min(i + CHUNK, visibleVendas.length)
       for (; i < end; i++) {
         const v = visibleVendas[i]
-        const color = setorColors[v.setor_rota_norm] || PALETTE[0]
+        const color = (colorMode === 'regiao' ? regiaoColors[v.regiao] : setorColors[v.setor_rota_norm]) || PALETTE[0]
         const size = v.sem_venda ? 16 : Math.min(38, Math.max(20, Math.log10((v.venda_mes || 0) + 1) * 6 + 14))
         const opacity = v.sem_venda ? 0.4 : 1
         const marker = L.marker([v.latitude, v.longitude], { icon: createDotIcon(L, color, size, opacity) })
@@ -281,11 +294,45 @@ export default function GeoVendasCidades() {
     addChunk()
 
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [visibleVendas, leafletReady, mapZoom, setorColors, setorNomes])
+  }, [visibleVendas, leafletReady, mapZoom, colorMode, setorColors, regiaoColors])
 
   const controls = (
     <>
-      <MultiSelectSetores setores={setores} setorColors={setorColors} selected={filterSetores} onChange={setFilterSetores} />
+      <div className="self-end">
+        <label className="block text-xs text-text-secondary mb-1">Cores por</label>
+        <div className="flex rounded-lg border border-border-color overflow-hidden">
+          <button
+            onClick={() => setColorMode('regiao')}
+            className={`px-3 py-2 text-sm transition-colors ${colorMode === 'regiao' ? 'bg-accent-blue/10 text-accent-blue' : 'bg-bg-tertiary text-text-secondary hover:border-accent-blue/50'}`}
+          >
+            Região
+          </button>
+          <button
+            onClick={() => setColorMode('rota')}
+            className={`px-3 py-2 text-sm border-l border-border-color transition-colors ${colorMode === 'rota' ? 'bg-accent-blue/10 text-accent-blue' : 'bg-bg-tertiary text-text-secondary hover:border-accent-blue/50'}`}
+          >
+            Rota
+          </button>
+        </div>
+      </div>
+      <MultiSelectFilter
+        label="Setores/Rotas"
+        allLabel="Todos os setores/rotas"
+        unitSingular="setor/rota"
+        unitPlural="setores/rotas"
+        items={setores.map(s => ({ value: s.nome_norm, nome: s.nome, color: setorColors[s.nome_norm] }))}
+        selected={filterSetores}
+        onChange={setFilterSetores}
+      />
+      <MultiSelectFilter
+        label="Região"
+        allLabel="Todas as regiões"
+        unitSingular="região"
+        unitPlural="regiões"
+        items={regioes.map(r => ({ value: r, nome: r, color: regiaoColors[r] }))}
+        selected={filterRegioes}
+        onChange={setFilterRegioes}
+      />
       <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer self-end pb-2">
         <input type="checkbox" checked={showSemVenda} onChange={e => setShowSemVenda(e.target.checked)} className="accent-accent-amber" />
         Municípios sem venda
@@ -311,7 +358,7 @@ export default function GeoVendasCidades() {
       <PageHeader title="Geolocalização Vendas Cidades" subtitle={semDados ? undefined : `${visibleVendas.length} municípios`} />
 
       {!semDados && (
-        <FiltrosBar onClear={() => { setShowLegend(false); setShowSemVenda(false); setFilterSetores([]) }}>
+        <FiltrosBar onClear={() => { setShowLegend(false); setShowSemVenda(false); setFilterSetores([]); setFilterRegioes([]); setColorMode('regiao') }}>
           {controls}
         </FiltrosBar>
       )}
@@ -338,7 +385,11 @@ export default function GeoVendasCidades() {
         )}
 
         {showLegend && !semDados && (
-          <DraggableLegend setorColors={Object.fromEntries(Object.entries(setorColors).map(([k, v]) => [setorNomes[k] || k, v]))} onClose={() => setShowLegend(false)} />
+          <DraggableLegend
+            title={colorMode === 'regiao' ? 'Regiões' : 'Setores/Rotas'}
+            colors={colorMode === 'regiao' ? regiaoColors : Object.fromEntries(Object.entries(setorColors).map(([k, v]) => [setorNomes[k] || k, v]))}
+            onClose={() => setShowLegend(false)}
+          />
         )}
 
         {isFullscreen && !semDados && (
