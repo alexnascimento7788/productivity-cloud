@@ -370,6 +370,16 @@ export default function Mapa() {
         prepared.push({ group, lat: coords.lat + j.lat, lng: coords.lng + j.lng, color, size })
       })
 
+      // Espaço reservado no auto-pan pra o popup nunca abrir atrás do cabeçalho/
+      // barra de filtros (fixos no topo, inclusive a barra flutuante da tela cheia).
+      const HOVER_OPEN_DELAY = 150 // ms — evita rajada de openPopup ao passar o mouse rápido por equipes próximas
+      const popupOpts = {
+        maxWidth: 300,
+        autoPan: true,
+        autoPanPaddingTopLeft: L.point(20, 110),
+        autoPanPaddingBottomRight: L.point(20, 20),
+      }
+
       const CHUNK = 300
       let i = 0
       function addGroupChunk() {
@@ -377,9 +387,17 @@ export default function Mapa() {
         for (; i < end; i++) {
           const { group, lat, lng, color, size } = prepared[i]
           const marker = L.marker([lat, lng], { icon: createCityIcon(L, color, size) })
-          marker.bindPopup(groupPopupHtml(group), { maxWidth: 300, autoPan: false })
-          marker.on('mouseover', function () { this.openPopup() })
-          marker.on('mouseout', function () { this.closePopup() })
+          marker.bindPopup(groupPopupHtml(group), popupOpts)
+          let hoverTimer = null
+          marker.on('mouseover', function () {
+            clearTimeout(hoverTimer)
+            const m = this
+            hoverTimer = setTimeout(() => { if (m._map) m.openPopup() }, HOVER_OPEN_DELAY)
+          })
+          marker.on('mouseout', function () {
+            clearTimeout(hoverTimer)
+            this.closePopup()
+          })
           layerGroup.addLayer(marker)
         }
         if (i < prepared.length) rafRef.current = requestAnimationFrame(addGroupChunk)
