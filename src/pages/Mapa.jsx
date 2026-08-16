@@ -377,8 +377,9 @@ export default function Mapa() {
         for (; i < end; i++) {
           const { group, lat, lng, color, size } = prepared[i]
           const marker = L.marker([lat, lng], { icon: createCityIcon(L, color, size) })
-          marker.bindPopup(groupPopupHtml(group), { maxWidth: 300 })
+          marker.bindPopup(groupPopupHtml(group), { maxWidth: 300, autoPan: false })
           marker.on('mouseover', function () { this.openPopup() })
+          marker.on('mouseout', function () { this.closePopup() })
           layerGroup.addLayer(marker)
         }
         if (i < prepared.length) rafRef.current = requestAnimationFrame(addGroupChunk)
