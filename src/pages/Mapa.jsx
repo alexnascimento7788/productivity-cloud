@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
-import { Maximize2, Minimize2, Layers } from 'lucide-react'
+import { Maximize2, Minimize2, Layers, LocateFixed } from 'lucide-react'
 import { useAuth, useData, useParams, isStaff, filterRowsByRole } from '../App'
 import { processExcelData, calcMapData, formatCurrency } from '../services/dataService'
 import { FiltrosBar } from '../components/Filtros'
@@ -8,6 +8,7 @@ import PageHeader from '../components/PageHeader'
 let L = null
 
 const BRASIL_CENTER = [-14.2, -51.9]
+const BRASIL_ZOOM = 5
 
 // Paleta com 20 cores – hues espaçados para máxima distinção visual
 // Ordenada para que índices vizinhos nunca tenham hue parecido
@@ -171,6 +172,46 @@ function MultiSelectEquipes({ equipes, selected, onChange }) {
   )
 }
 
+// Card fixo do lado direito com o detalhamento por vendedor de uma equipe+cidade.
+// Aberto/fechado por clique no pin (nunca por hover) — não mexe na posição do mapa.
+function TeamDetailPanel({ group, color, onClose }) {
+  if (!group) return null
+  return (
+    <div className="absolute top-4 right-4 z-[1500] bg-bg-secondary/95 border border-border-color rounded-xl shadow-xl backdrop-blur-sm w-[290px] max-h-[calc(100%-2rem)] overflow-hidden flex flex-col animate-fade-in">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border-color">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-text-primary truncate">{group.equipeNome}</p>
+          <p className="text-xs text-text-secondary truncate">{group.cidade} · {group.vendedores.length} vendedor{group.vendedores.length > 1 ? 'es' : ''}</p>
+        </div>
+        <button onClick={onClose} className="shrink-0 text-text-secondary/50 hover:text-text-secondary text-sm leading-none">✕</button>
+      </div>
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-border-color text-xs flex-wrap">
+        <span className="text-accent-green">🟢 {group.ativos}</span>
+        <span className="text-accent-amber">🟡 {group.bloqueados}</span>
+        <span className="text-accent-red">🔴 {group.inativos}</span>
+        <span className="text-text-primary font-semibold ml-auto">{formatCurrency(group.fatMesAtual)}</span>
+      </div>
+      <div className="overflow-y-auto p-3 space-y-3">
+        {group.vendedores.map(v => {
+          const tm = v.ativos > 0 ? v.fatMesAtual / v.ativos : 0
+          return (
+            <div key={v.rca} className="pl-2.5" style={{ borderLeft: `2px solid ${color}` }}>
+              <p className="text-xs font-semibold text-text-primary">[{v.rca}] {v.nome}</p>
+              <p className="text-[11px] text-text-secondary flex items-center gap-2 flex-wrap mt-0.5">
+                <span className="text-accent-green">🟢 {v.ativos}</span>
+                <span className="text-accent-amber">🟡 {v.bloqueados}</span>
+                <span className="text-accent-red">🔴 {v.inativos}</span>
+                <span>· {formatCurrency(v.fatMesAtual)}</span>
+                <span>· méd {formatCurrency(tm)}</span>
+              </p>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function Mapa() {
   const { session } = useAuth()
   const { excelData, equipesList } = useData()
@@ -189,10 +230,15 @@ export default function Mapa() {
   const [leafletReady, setLeafletReady] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [mapZoom, setMapZoom] = useState(7)
+  const [selectedKey, setSelectedKey] = useState(null) // `${gr}::${cidade}` do grupo com o card aberto
 
   useEffect(() => {
     import('leaflet').then(mod => { L = mod.default; setLeafletReady(true) })
   }, [])
+
+  function recenter() {
+    if (mapInstance.current) mapInstance.current.setView(BRASIL_CENTER, BRASIL_ZOOM)
+  }
 
   useEffect(() => {
     if (!mapInstance.current) return
@@ -283,6 +329,17 @@ export default function Mapa() {
     return [...map.values()]
   }, [mapData, isGroupedMode])
 
+  // Grupo com o card de detalhes aberto no momento (null = nenhum)
+  const selectedGroup = useMemo(
+    () => (selectedKey ? teamCityData.find(g => `${g.gr}::${g.cidade}` === selectedKey) || null : null),
+    [teamCityData, selectedKey]
+  )
+
+  // Sai do modo agrupado ou muda o filtro de equipes → fecha o card, se estiver aberto
+  useEffect(() => {
+    if (!isGroupedMode) setSelectedKey(null)
+  }, [isGroupedMode])
+
   // Grupos visíveis por nível de zoom — revela progressivamente ao aproximar
   const visibleCityData = useMemo(() => {
     if (!isGroupedMode || teamCityData.length === 0) return []
@@ -301,7 +358,7 @@ export default function Mapa() {
     if (!leafletReady || !mapRef.current || mapInstance.current) return
     mapInstance.current = L.map(mapRef.current, {
       center: BRASIL_CENTER,
-      zoom: 5,
+      zoom: BRASIL_ZOOM,
       minZoom: 4,
       maxZoom: 14,
       preferCanvas: true,
@@ -327,38 +384,20 @@ export default function Mapa() {
 
     if (isGroupedMode) {
       // ── Modo agrupado: 1 pin por equipe+cidade, cor da equipe ──────────────
-      const groupPopupHtml = group => {
-        const color = teamColors[group.gr] || '#888'
-        const vendHtml = group.vendedores.map(v => {
-          const tm = v.ativos > 0 ? v.fatMesAtual / v.ativos : 0
-          return `
-            <div style="padding:5px 0 3px 10px;border-left:2px solid ${color};">
-              <div style="font-size:12px;color:#f9fafb;font-weight:600;">[${v.rca}] ${v.nome}</div>
-              <div style="font-size:11px;color:#9ca3af;display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;">
-                <span style="color:#10b981;">🟢 ${v.ativos}</span>
-                <span style="color:#f59e0b;">🟡 ${v.bloqueados}</span>
-                <span style="color:#ef4444;">🔴 ${v.inativos}</span>
-                · ${formatCurrency(v.fatMesAtual)}
-                · méd ${formatCurrency(tm)}
-              </div>
-            </div>`
-        }).join('')
-
-        return `
-          <div style="font-family:Inter,sans-serif;min-width:230px;max-width:290px;">
-            <div style="font-weight:700;font-size:14px;color:#f9fafb;margin-bottom:2px;">${group.equipeNome}</div>
-            <div style="color:#9ca3af;font-size:12px;margin-bottom:5px;">${group.cidade} · ${group.vendedores.length} vendedor${group.vendedores.length > 1 ? 'es' : ''}</div>
-            <div style="font-size:12px;margin-bottom:4px;">
-              <span style="color:#10b981;">🟢 ${group.ativos}</span>&nbsp;
-              <span style="color:#f59e0b;">🟡 ${group.bloqueados}</span>&nbsp;
-              <span style="color:#ef4444;">🔴 ${group.inativos}</span>&nbsp;
-              · <span style="color:#f9fafb;font-weight:600;">${formatCurrency(group.fatMesAtual)}</span>
-            </div>
-            <div style="border-top:1px solid #1f2937;padding-top:3px;">
-              ${vendHtml}
-            </div>
-          </div>`
-      }
+      // Hover = tooltip leve só com totais (nunca move o mapa — Tooltip não tem
+      // autoPan). Clique = abre/fecha o card lateral com o detalhe por vendedor.
+      const totalsTooltipHtml = group => `
+        <div style="font-family:Inter,sans-serif;min-width:170px;">
+          <div style="font-weight:700;font-size:13px;color:#f9fafb;margin-bottom:2px;">${group.equipeNome}</div>
+          <div style="color:#9ca3af;font-size:11px;margin-bottom:4px;">${group.cidade} · ${group.vendedores.length} vendedor${group.vendedores.length > 1 ? 'es' : ''}</div>
+          <div style="font-size:12px;">
+            <span style="color:#10b981;">🟢 ${group.ativos}</span>&nbsp;
+            <span style="color:#f59e0b;">🟡 ${group.bloqueados}</span>&nbsp;
+            <span style="color:#ef4444;">🔴 ${group.inativos}</span>&nbsp;
+            · <span style="color:#f9fafb;font-weight:600;">${formatCurrency(group.fatMesAtual)}</span>
+          </div>
+          <div style="color:#60a5fa;font-size:10px;margin-top:3px;">Clique para ver os vendedores</div>
+        </div>`
 
       const prepared = []
       visibleCityData.forEach(group => {
@@ -370,34 +409,16 @@ export default function Mapa() {
         prepared.push({ group, lat: coords.lat + j.lat, lng: coords.lng + j.lng, color, size })
       })
 
-      // Espaço reservado no auto-pan pra o popup nunca abrir atrás do cabeçalho/
-      // barra de filtros (fixos no topo, inclusive a barra flutuante da tela cheia).
-      const HOVER_OPEN_DELAY = 150 // ms — evita rajada de openPopup ao passar o mouse rápido por equipes próximas
-      const popupOpts = {
-        maxWidth: 300,
-        autoPan: true,
-        autoPanPaddingTopLeft: L.point(20, 110),
-        autoPanPaddingBottomRight: L.point(20, 20),
-      }
-
       const CHUNK = 300
       let i = 0
       function addGroupChunk() {
         const end = Math.min(i + CHUNK, prepared.length)
         for (; i < end; i++) {
-          const { group, lat, lng, color, size } = prepared[i]
-          const marker = L.marker([lat, lng], { icon: createCityIcon(L, color, size) })
-          marker.bindPopup(groupPopupHtml(group), popupOpts)
-          let hoverTimer = null
-          marker.on('mouseover', function () {
-            clearTimeout(hoverTimer)
-            const m = this
-            hoverTimer = setTimeout(() => { if (m._map) m.openPopup() }, HOVER_OPEN_DELAY)
-          })
-          marker.on('mouseout', function () {
-            clearTimeout(hoverTimer)
-            this.closePopup()
-          })
+          const { group, lat, lng, size } = prepared[i]
+          const key = `${group.gr}::${group.cidade}`
+          const marker = L.marker([lat, lng], { icon: createCityIcon(L, teamColors[group.gr] || TEAM_PALETTE[0], size) })
+          marker.bindTooltip(totalsTooltipHtml(group), { direction: 'top', offset: [0, -size / 2], opacity: 0.97 })
+          marker.on('click', () => setSelectedKey(k => (k === key ? null : key)))
           layerGroup.addLayer(marker)
         }
         if (i < prepared.length) rafRef.current = requestAnimationFrame(addGroupChunk)
@@ -533,6 +554,13 @@ export default function Mapa() {
       {/* Legenda de status + botão fullscreen */}
       <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-end gap-2">
         <button
+          onClick={recenter}
+          title="Recentralizar no Brasil"
+          className="bg-bg-secondary/90 border border-border-color rounded-lg p-2 hover:bg-bg-tertiary transition-colors backdrop-blur-sm"
+        >
+          <LocateFixed size={15} className="text-text-secondary" />
+        </button>
+        <button
           onClick={() => setIsFullscreen(f => !f)}
           title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
           className="bg-bg-secondary/90 border border-border-color rounded-lg p-2 hover:bg-bg-tertiary transition-colors backdrop-blur-sm"
@@ -547,7 +575,7 @@ export default function Mapa() {
           <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-accent-amber" /><span className="text-text-secondary">Bloqueados</span></div>
           <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-accent-red" /><span className="text-text-secondary">Inativos</span></div>
           <div className="border-t border-border-color pt-1.5 text-text-secondary/70">
-            {isGroupedMode ? 'Pin = cidade · Hover = detalhes' : 'Pin = código RCA'}
+            {isGroupedMode ? 'Pin = cidade · Hover = totais · Clique = vendedores' : 'Pin = código RCA'}
           </div>
           <div className="text-text-secondary/70">
             {isGroupedMode
@@ -563,6 +591,15 @@ export default function Mapa() {
           teamColors={teamColors}
           equipes={legendaEquipes}
           onClose={() => setShowLegend(false)}
+        />
+      )}
+
+      {/* Card lateral com detalhe por vendedor — aberto por clique no pin, fecha ao clicar de novo */}
+      {isGroupedMode && selectedGroup && (
+        <TeamDetailPanel
+          group={selectedGroup}
+          color={teamColors[selectedGroup.gr] || TEAM_PALETTE[0]}
+          onClose={() => setSelectedKey(null)}
         />
       )}
     </div>

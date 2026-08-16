@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Maximize2, Minimize2, Layers, SlidersHorizontal, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Maximize2, Minimize2, Layers, SlidersHorizontal, PanelLeftClose, PanelLeftOpen, LocateFixed } from 'lucide-react'
 import { useAuth } from '../App'
 import PageHeader from '../components/PageHeader'
 import { FiltrosBar } from '../components/Filtros'
@@ -7,6 +7,7 @@ import { FiltrosBar } from '../components/Filtros'
 let L = null
 
 const BRASIL_CENTER = [-14.2, -51.9]
+const BRASIL_ZOOM = 5
 
 // Mesma paleta usada na geolocalização padrão — duplicada aqui de propósito
 // para não alterar Mapa.jsx além do necessário.
@@ -201,6 +202,10 @@ export default function GeoVendasCidades() {
     setTimeout(() => mapInstance.current.invalidateSize(), 200)
   }, [isFullscreen])
 
+  function recenter() {
+    if (mapInstance.current) mapInstance.current.setView(BRASIL_CENTER, BRASIL_ZOOM)
+  }
+
   const setorColors = useMemo(() => {
     return Object.fromEntries(setores.map((s, i) => [s.nome_norm, PALETTE[i % PALETTE.length]]))
   }, [setores])
@@ -233,7 +238,7 @@ export default function GeoVendasCidades() {
   useEffect(() => {
     if (!leafletReady || !mapRef.current || mapInstance.current) return
     mapInstance.current = L.map(mapRef.current, {
-      center: BRASIL_CENTER, zoom: 5, minZoom: 4, maxZoom: 14, preferCanvas: true,
+      center: BRASIL_CENTER, zoom: BRASIL_ZOOM, minZoom: 4, maxZoom: 14, preferCanvas: true,
     })
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors', maxZoom: 18,
@@ -374,6 +379,13 @@ export default function GeoVendasCidades() {
 
         {!semDados && (
           <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-end gap-2">
+            <button
+              onClick={recenter}
+              title="Recentralizar no Brasil"
+              className="bg-bg-secondary/90 border border-border-color rounded-lg p-2 hover:bg-bg-tertiary transition-colors backdrop-blur-sm"
+            >
+              <LocateFixed size={15} className="text-text-secondary" />
+            </button>
             <button
               onClick={() => setIsFullscreen(f => !f)}
               title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}

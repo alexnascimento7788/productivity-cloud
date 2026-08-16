@@ -271,6 +271,21 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
               <p className="text-sm font-bold text-text-primary">SIXHours</p>
             </div>
 
+            {/* Versão 4.10 */}
+            <div className="px-4 py-4 border-b border-border-color">
+              <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.10</p>
+              <ul className="space-y-2 text-xs text-text-secondary">
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Mapa (modo agrupado):</span> hover agora mostra só os totais da equipe na cidade (sem lista de vendedor) e nunca move o mapa. Clique no pin abre um card fixo do lado direito com o detalhe de cada vendedor; clique de novo fecha</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Botão recentralizar:</span> nas duas telas de mapa, volta a visão pro centro do Brasil com um clique — sem precisar sair da aba e voltar</span>
+                </li>
+              </ul>
+            </div>
+
             {/* Versão 4.9.4 */}
             <div className="px-4 py-4 border-b border-border-color">
               <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.9.4</p>
