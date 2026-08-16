@@ -123,8 +123,9 @@ module.exports = async function handler(req, res) {
   }
 
   // ── wipe_company_data ────────────────────────────────────────────────────────
-  // Apaga vendas, clientes, vendedores e histórico de imports da empresa.
-  // Preserva equipes e cidades_depara (mesma regra do reimport em api/upload.js).
+  // Apaga vendas, clientes, vendedores, de/para de cidades e histórico de imports
+  // da empresa. Preserva apenas equipes (nomes/relacionamentos configurados pelo
+  // admin da empresa, não fazem parte da "base de dados" importada).
   if (req.method === 'POST' && action === 'wipe_company_data') {
     const { company_id } = body
     if (!company_id) return res.status(400).json({ error: 'company_id é obrigatório' })
@@ -137,7 +138,7 @@ module.exports = async function handler(req, res) {
     if (!company) return res.status(404).json({ error: 'Empresa não encontrada' })
 
     try {
-      for (const table of ['vendas_mensais', 'ultima_compra', 'clientes', 'vendedores']) {
+      for (const table of ['vendas_mensais', 'ultima_compra', 'clientes', 'vendedores', 'cidades_depara']) {
         const { error } = await supabase.from(table).delete().eq('company_id', company_id)
         if (error) throw new Error(`${table}: ${error.message}`)
       }
@@ -192,6 +193,69 @@ module.exports = async function handler(req, res) {
     }
     const { error } = await supabase.from('perfis').update({ ativo }).eq('user_id', targetId)
     if (error) return res.status(500).json({ error: error.message })
+    return res.status(200).json({ ok: true })
+  }
+
+  // ── delete_user ───────────────────────────────────────────────────────────────
+  // Apaga o usuário do Auth; o perfil cai junto via ON DELETE CASCADE.
+  if (req.method === 'POST' && action === 'delete_user') {
+    const { user_id: targetId } = body
+    if (!targetId) return res.status(400).json({ error: 'user_id é obrigatório' })
+    if (targetId === user.id) return res.status(400).json({ error: 'Você não pode excluir o próprio usuário' })
+
+    const { data: targetPerfil } = await supabase
+      .from('perfis')
+      .select('role')
+      .eq('user_id', targetId)
+      .single()
+    if (targetPerfil?.role === 'master') {
+      return res.status(400).json({ error: 'Não é possível excluir um usuário master por aqui' })
+    }
+
+    const { error } = await supabase.auth.admin.deleteUser(targetId)
+    if (error) return res.status(500).json({ error: error.message })
+    return res.status(200).json({ ok: true })
+  }
+
+  // ── delete_company ───────────────────────────────────────────────────────────
+  // Apaga a empresa por completo: usuários (Auth), arquivos no Storage e, via
+  // ON DELETE CASCADE em company_id, todas as tabelas de dados (clientes, vendas,
+  // equipes, cidades_depara, geo_*, uploads, parametros, perfis).
+  if (req.method === 'POST' && action === 'delete_company') {
+    const { company_id } = body
+    if (!company_id) return res.status(400).json({ error: 'company_id é obrigatório' })
+
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id, name')
+      .eq('id', company_id)
+      .single()
+    if (!company) return res.status(404).json({ error: 'Empresa não encontrada' })
+
+    try {
+      const { data: perfisEmpresa } = await supabase
+        .from('perfis')
+        .select('user_id')
+        .eq('company_id', company_id)
+
+      const { data: files } = await supabase.storage.from('planilhas').list(company_id)
+      if (files?.length) {
+        const paths = files.map(f => `${company_id}/${f.name}`)
+        const { error: removeErr } = await supabase.storage.from('planilhas').remove(paths)
+        if (removeErr) console.warn('Storage remove warning:', removeErr.message)
+      }
+
+      for (const p of perfisEmpresa || []) {
+        const { error: delUserErr } = await supabase.auth.admin.deleteUser(p.user_id)
+        if (delUserErr) console.warn('Auth deleteUser warning:', delUserErr.message)
+      }
+
+      const { error: companyErr } = await supabase.from('companies').delete().eq('id', company_id)
+      if (companyErr) throw new Error(companyErr.message)
+    } catch (err) {
+      return res.status(500).json({ error: err.message })
+    }
+
     return res.status(200).json({ ok: true })
   }
 

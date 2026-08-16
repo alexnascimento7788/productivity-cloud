@@ -21,8 +21,46 @@ function chunk(arr, size) {
   return out
 }
 
+const UF_CODES = new Set([
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
+])
+
+// Pré-processamento do nome da cidade vindo da planilha, tentando aproximar do
+// formato oficial IBGE (cidades_ibge.nome_norm) para reduzir pendências manuais
+// no de/para: remove sufixo de UF, pontuação e expande abreviações comuns.
 function normalizeCity(s) {
-  return String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim()
+  let v = String(s || '').toUpperCase().trim()
+  v = v.normalize('NFD').replace(/[̀-ͯ]/g, '')
+  v = v.replace(/[.,]/g, ' ')
+  v = v.replace(/\s+/g, ' ').trim()
+  // remove sufixo de UF ao final: "CIDADE - MG", "CIDADE/MG", "CIDADE (MG)"
+  v = v.replace(/\s*[-/(]\s*([A-Z]{2})\)?\s*$/, (full, uf) => (UF_CODES.has(uf) ? '' : full))
+  // abreviações comuns de município brasileiro
+  v = v.replace(/\bSTO\b/g, 'SANTO').replace(/\bSTA\b/g, 'SANTA')
+  v = v.replace(/^S\s+/, 'SAO ')
+  v = v.replace(/\s+/g, ' ').trim()
+  return v
+}
+
+// Distância de Levenshtein — usada só como fallback quando não há match exato,
+// para sugerir automaticamente cidades com pequenas diferenças de digitação.
+function levenshtein(a, b) {
+  const m = a.length, n = b.length
+  if (!m) return n
+  if (!n) return m
+  const dp = new Array(n + 1)
+  for (let j = 0; j <= n; j++) dp[j] = j
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0]
+    dp[0] = i
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j]
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1])
+      prev = tmp
+    }
+  }
+  return dp[n]
 }
 
 function parseDate(raw) {
@@ -277,7 +315,7 @@ module.exports = async function handler(req, res) {
             .maybeSingle()
           const ufPadrao = (ufParam?.valor || 'MG').toUpperCase()
 
-          // busca candidatos na base IBGE em lotes
+          // busca candidatos na base IBGE em lotes (match exato pelo nome normalizado)
           const matches = new Map() // norm → [{codigo_ibge, uf}]
           for (const batch of chunk(novas, 200)) {
             const { data: ibge, error } = await supabase
@@ -288,6 +326,31 @@ module.exports = async function handler(req, res) {
             for (const c of ibge || []) {
               if (!matches.has(c.nome_norm)) matches.set(c.nome_norm, [])
               matches.get(c.nome_norm).push(c)
+            }
+          }
+
+          // fallback fuzzy: para as que não bateram exato, tenta a menor distância
+          // de edição dentro da UF padrão da empresa — só assume se houver um único
+          // candidato claramente mais próximo, para não gerar vínculo errado.
+          const semMatch = novas.filter(norm => !matches.get(norm)?.length)
+          if (semMatch.length) {
+            const { data: ufCidades } = await supabase
+              .from('cidades_ibge')
+              .select('codigo_ibge, nome_norm, uf')
+              .eq('uf', ufPadrao)
+
+            for (const norm of semMatch) {
+              if (norm.length < 4) continue // nomes muito curtos: risco alto de falso positivo
+              let best = null, bestDist = Infinity, tie = false
+              for (const c of ufCidades || []) {
+                const d = levenshtein(norm, c.nome_norm)
+                if (d < bestDist) { bestDist = d; best = c; tie = false }
+                else if (d === bestDist) tie = true
+              }
+              const threshold = norm.length <= 7 ? 1 : 2
+              if (best && !tie && bestDist > 0 && bestDist <= threshold) {
+                matches.set(norm, [best])
+              }
             }
           }
 

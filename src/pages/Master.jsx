@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, X, Loader2, Trash2, Eraser } from 'lucide-react'
+import { Plus, X, Loader2, Trash2, Eraser, UserX } from 'lucide-react'
 import { useAuth } from '../App'
 import { supabase } from '../lib/supabaseClient'
 import PageHeader from '../components/PageHeader'
@@ -59,6 +59,10 @@ function TabEmpresas({ apiCall }) {
   const [wipeConfirmText, setWipeConfirmText] = useState('')
   const [wiping, setWiping] = useState(false)
   const [wipeError, setWipeError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -124,6 +128,23 @@ function TabEmpresas({ apiCall }) {
     load()
   }
 
+  function openDeleteModal(company) {
+    setDeleteError('')
+    setDeleteConfirmText('')
+    setDeleteTarget(company)
+  }
+
+  async function handleDeleteCompany() {
+    if (!deleteTarget || deleteConfirmText !== deleteTarget.name) return
+    setDeleteError('')
+    setDeleting(true)
+    const res = await apiCall('POST', null, { action: 'delete_company', company_id: deleteTarget.id })
+    setDeleting(false)
+    if (res.error) { setDeleteError(res.error); return }
+    setDeleteTarget(null)
+    load()
+  }
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -184,13 +205,22 @@ function TabEmpresas({ apiCall }) {
                     {new Date(c.created_at).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => openWipeModal(c)}
-                      title="Apagar base de dados desta empresa"
-                      className="text-text-secondary hover:text-accent-red p-1 rounded transition-colors"
-                    >
-                      <Eraser size={14} />
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => openWipeModal(c)}
+                        title="Apagar base de dados desta empresa"
+                        className="text-text-secondary hover:text-accent-amber p-1 rounded transition-colors"
+                      >
+                        <Eraser size={14} />
+                      </button>
+                      <button
+                        onClick={() => openDeleteModal(c)}
+                        title="Excluir empresa por completo"
+                        className="text-text-secondary hover:text-accent-red p-1 rounded transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -248,8 +278,8 @@ function TabEmpresas({ apiCall }) {
         <Modal title="Apagar base da empresa" onClose={() => setWipeTarget(null)}>
           <div className="space-y-4">
             <div className="bg-accent-red/10 border border-accent-red/30 rounded-xl px-4 py-3 text-sm text-accent-red">
-              Isso apaga <strong>permanentemente</strong> vendedores, clientes, vendas, últimas compras, histórico de imports e a planilha salva de <strong>{wipeTarget.name}</strong>.
-              Equipes e o de/para de cidades são preservados. Não há como desfazer.
+              Isso apaga <strong>permanentemente</strong> vendedores, clientes, vendas, últimas compras, o de/para de cidades, histórico de imports e a planilha salva de <strong>{wipeTarget.name}</strong>.
+              Apenas as equipes (nomes configurados) são preservadas. Não há como desfazer.
             </div>
             <Field label={<>Digite <strong>{wipeTarget.name}</strong> para confirmar</>}>
               <input
@@ -279,6 +309,42 @@ function TabEmpresas({ apiCall }) {
           </div>
         </Modal>
       )}
+
+      {deleteTarget && (
+        <Modal title="Excluir empresa" onClose={() => setDeleteTarget(null)}>
+          <div className="space-y-4">
+            <div className="bg-accent-red/10 border border-accent-red/30 rounded-xl px-4 py-3 text-sm text-accent-red">
+              Isso exclui <strong>permanentemente</strong> a empresa <strong>{deleteTarget.name}</strong>: todos os dados, equipes, cidades, usuários (incluindo login) e arquivos.
+              Diferente de "Apagar base", aqui a empresa deixa de existir. Não há como desfazer.
+            </div>
+            <Field label={<>Digite <strong>{deleteTarget.name}</strong> para confirmar</>}>
+              <input
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                className={inputCls}
+                autoFocus
+              />
+            </Field>
+            {deleteError && <p className="text-accent-red text-sm">{deleteError}</p>}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-2.5 border border-border-color rounded-lg text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteCompany}
+                disabled={deleting || deleteConfirmText !== deleteTarget.name}
+                className="flex-1 py-2.5 bg-accent-red text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {deleting && <Loader2 size={14} className="animate-spin" />}
+                Excluir empresa
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }
@@ -292,6 +358,9 @@ function TabUsuarios({ apiCall }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({ email: '', nome: '', password: '', company_id: '', role: 'admin' })
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -335,6 +404,22 @@ function TabUsuarios({ apiCall }) {
     load()
   }
 
+  function openDeleteModal(u) {
+    setDeleteError('')
+    setDeleteTarget(u)
+  }
+
+  async function handleDeleteUser() {
+    if (!deleteTarget) return
+    setDeleteError('')
+    setDeleting(true)
+    const res = await apiCall('POST', null, { action: 'delete_user', user_id: deleteTarget.user_id })
+    setDeleting(false)
+    if (res.error) { setDeleteError(res.error); return }
+    setDeleteTarget(null)
+    load()
+  }
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -356,7 +441,7 @@ function TabUsuarios({ apiCall }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border-color">
-                {['Nome', 'Email', 'Empresa', 'Role', 'Status'].map(h => (
+                {['Nome', 'Email', 'Empresa', 'Role', 'Status', 'Ações'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-text-secondary font-medium">{h}</th>
                 ))}
               </tr>
@@ -364,7 +449,7 @@ function TabUsuarios({ apiCall }) {
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-text-secondary">
+                  <td colSpan={6} className="px-4 py-10 text-center text-text-secondary">
                     Nenhum usuário cadastrado. Crie o primeiro admin acima.
                   </td>
                 </tr>
@@ -384,6 +469,15 @@ function TabUsuarios({ apiCall }) {
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge ativo={u.ativo} onClick={() => handleToggle(u)} activeLabel="Ativo" inactiveLabel="Inativo" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => openDeleteModal(u)}
+                      title="Excluir usuário"
+                      className="text-text-secondary hover:text-accent-red p-1 rounded transition-colors"
+                    >
+                      <UserX size={14} />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -463,6 +557,33 @@ function TabUsuarios({ apiCall }) {
               >
                 {saving && <Loader2 size={14} className="animate-spin" />}
                 Criar Usuário
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteTarget && (
+        <Modal title="Excluir usuário" onClose={() => setDeleteTarget(null)}>
+          <div className="space-y-4">
+            <div className="bg-accent-red/10 border border-accent-red/30 rounded-xl px-4 py-3 text-sm text-accent-red">
+              Isso exclui <strong>permanentemente</strong> o login e o perfil de <strong>{deleteTarget.nome || deleteTarget.email}</strong>. Não há como desfazer.
+            </div>
+            {deleteError && <p className="text-accent-red text-sm">{deleteError}</p>}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-2.5 border border-border-color rounded-lg text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-accent-red text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting && <Loader2 size={14} className="animate-spin" />}
+                Excluir usuário
               </button>
             </div>
           </div>

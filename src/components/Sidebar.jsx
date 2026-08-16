@@ -271,6 +271,25 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
               <p className="text-sm font-bold text-text-primary">SIXHours</p>
             </div>
 
+            {/* Versão 4.9 */}
+            <div className="px-4 py-4 border-b border-border-color">
+              <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.9</p>
+              <ul className="space-y-2 text-xs text-text-secondary">
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Correção:</span> "Apagar base" de uma empresa agora também limpa o de/para de cidades — antes, pendências de cidades continuavam aparecendo mesmo depois de apagar tudo</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Painel Master:</span> novo botão para excluir empresa por completo (dados, equipes, cidades, usuários e login) e para excluir usuário individual</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Import:</span> pré-processamento mais inteligente do nome das cidades (remove sufixo de UF, pontuação e abreviações como "Sto./Sta./S.") e correspondência aproximada como reforço, reduzindo pendências manuais no de/para de cidades</span>
+                </li>
+              </ul>
+            </div>
+
             {/* Versão 4.8 */}
             <div className="px-4 py-4 border-b border-border-color">
               <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.8</p>
