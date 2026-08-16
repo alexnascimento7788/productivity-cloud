@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, X, Loader2, Trash2, Eraser, UserX } from 'lucide-react'
+import { Plus, X, Loader2, Trash2, Eraser, UserX, Check } from 'lucide-react'
 import { useAuth } from '../App'
 import { supabase } from '../lib/supabaseClient'
 import PageHeader from '../components/PageHeader'
@@ -63,6 +63,12 @@ function TabEmpresas({ apiCall }) {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  function showNotice(msg) {
+    setNotice(msg)
+    setTimeout(() => setNotice(n => (n === msg ? '' : n)), 6000)
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -124,6 +130,7 @@ function TabEmpresas({ apiCall }) {
     const res = await apiCall('POST', null, { action: 'wipe_company_data', company_id: wipeTarget.id })
     setWiping(false)
     if (res.error) { setWipeError(res.error); return }
+    showNotice(`Base de "${wipeTarget.name}" apagada com sucesso.`)
     setWipeTarget(null)
     load()
   }
@@ -141,12 +148,18 @@ function TabEmpresas({ apiCall }) {
     const res = await apiCall('POST', null, { action: 'delete_company', company_id: deleteTarget.id })
     setDeleting(false)
     if (res.error) { setDeleteError(res.error); return }
+    showNotice(`Empresa "${deleteTarget.name}" excluída com sucesso.`)
     setDeleteTarget(null)
     load()
   }
 
   return (
     <>
+      {notice && (
+        <div className="mb-4 flex items-center gap-2 px-4 py-2.5 bg-accent-green/10 border border-accent-green/30 rounded-lg text-sm text-accent-green">
+          <Check size={15} className="flex-shrink-0" /> {notice}
+        </div>
+      )}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-text-secondary">{companies.length} empresa(s) cadastrada(s)</p>
         <button
@@ -361,6 +374,12 @@ function TabUsuarios({ apiCall }) {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  function showNotice(msg) {
+    setNotice(msg)
+    setTimeout(() => setNotice(n => (n === msg ? '' : n)), 6000)
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -416,12 +435,18 @@ function TabUsuarios({ apiCall }) {
     const res = await apiCall('POST', null, { action: 'delete_user', user_id: deleteTarget.user_id })
     setDeleting(false)
     if (res.error) { setDeleteError(res.error); return }
+    showNotice(`Usuário "${deleteTarget.nome || deleteTarget.email}" excluído com sucesso.`)
     setDeleteTarget(null)
     load()
   }
 
   return (
     <>
+      {notice && (
+        <div className="mb-4 flex items-center gap-2 px-4 py-2.5 bg-accent-green/10 border border-accent-green/30 rounded-lg text-sm text-accent-green">
+          <Check size={15} className="flex-shrink-0" /> {notice}
+        </div>
+      )}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-text-secondary">{users.length} usuário(s) cadastrado(s)</p>
         <button

@@ -175,7 +175,7 @@ export default function Layout() {
         <footer className="px-4 sm:px-6 py-2 sm:py-3 flex items-center justify-between text-text-secondary/40 text-xs border-t border-border-color/30 flex-shrink-0 gap-2">
           <span className="hidden sm:block w-32" />
           <span className="truncate">Desenvolvido por SixHours@2026</span>
-          <span className="sm:w-32 text-right text-text-secondary/60 font-medium whitespace-nowrap">Versão Cloud 4.9.1</span>
+          <span className="sm:w-32 text-right text-text-secondary/60 font-medium whitespace-nowrap">Versão Cloud 4.9.2</span>
         </footer>
       </main>
     </div>
