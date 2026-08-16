@@ -271,6 +271,17 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
               <p className="text-sm font-bold text-text-primary">SIXHours</p>
             </div>
 
+            {/* Versão 4.9.1 */}
+            <div className="px-4 py-4 border-b border-border-color">
+              <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.9.1</p>
+              <ul className="space-y-2 text-xs text-text-secondary">
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Correção:</span> "Apagar base" agora também limpa as equipes — antes elas ficavam órfãs (criadas pelo import, não removidas pelo wipe). Reimport normal do admin continua preservando equipes e cidades normalmente, só o wipe do master zera tudo</span>
+                </li>
+              </ul>
+            </div>
+
             {/* Versão 4.9 */}
             <div className="px-4 py-4 border-b border-border-color">
               <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.9</p>

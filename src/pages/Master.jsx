@@ -278,8 +278,8 @@ function TabEmpresas({ apiCall }) {
         <Modal title="Apagar base da empresa" onClose={() => setWipeTarget(null)}>
           <div className="space-y-4">
             <div className="bg-accent-red/10 border border-accent-red/30 rounded-xl px-4 py-3 text-sm text-accent-red">
-              Isso apaga <strong>permanentemente</strong> vendedores, clientes, vendas, últimas compras, o de/para de cidades, histórico de imports e a planilha salva de <strong>{wipeTarget.name}</strong>.
-              Apenas as equipes (nomes configurados) são preservadas. Não há como desfazer.
+              Isso apaga <strong>permanentemente</strong> vendedores, clientes, vendas, últimas compras, equipes, o de/para de cidades, histórico de imports e a planilha salva de <strong>{wipeTarget.name}</strong>.
+              A empresa fica totalmente zerada. Não há como desfazer.
             </div>
             <Field label={<>Digite <strong>{wipeTarget.name}</strong> para confirmar</>}>
               <input

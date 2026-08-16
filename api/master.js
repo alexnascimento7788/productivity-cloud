@@ -123,9 +123,9 @@ module.exports = async function handler(req, res) {
   }
 
   // ── wipe_company_data ────────────────────────────────────────────────────────
-  // Apaga vendas, clientes, vendedores, de/para de cidades e histórico de imports
-  // da empresa. Preserva apenas equipes (nomes/relacionamentos configurados pelo
-  // admin da empresa, não fazem parte da "base de dados" importada).
+  // Apaga TODA a base importada da empresa: vendas, clientes, vendedores,
+  // equipes, de/para de cidades e histórico de imports. Depois do wipe a
+  // empresa fica zerada; um novo import recria equipes e de/para do zero.
   if (req.method === 'POST' && action === 'wipe_company_data') {
     const { company_id } = body
     if (!company_id) return res.status(400).json({ error: 'company_id é obrigatório' })
@@ -138,7 +138,7 @@ module.exports = async function handler(req, res) {
     if (!company) return res.status(404).json({ error: 'Empresa não encontrada' })
 
     try {
-      for (const table of ['vendas_mensais', 'ultima_compra', 'clientes', 'vendedores', 'cidades_depara']) {
+      for (const table of ['vendas_mensais', 'ultima_compra', 'clientes', 'vendedores', 'cidades_depara', 'equipes']) {
         const { error } = await supabase.from(table).delete().eq('company_id', company_id)
         if (error) throw new Error(`${table}: ${error.message}`)
       }
