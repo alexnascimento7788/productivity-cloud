@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { Download, X } from 'lucide-react'
+import { Download, X, Sparkles } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -27,6 +27,7 @@ const statusOptions = [
   { value: 'ativo', label: '🟢 Ativo' },
   { value: 'bloqueado', label: '🟡 Bloqueado' },
   { value: 'inativo', label: '🔴 Inativo' },
+  { value: 'inativos', label: '🟠 Inativo + Bloqueado' },
   { value: 'monitorado', label: '🔵 Monitorado' },
 ]
 
@@ -54,7 +55,7 @@ function diasFiltro(dias, faixa) {
   return true
 }
 
-function ClienteModal({ cliente, meses, diasBloqueio, diasInativacao, onClose }) {
+function ClienteModal({ cliente, meses, diasBloqueio, diasInativacao, onClose, onOpenAnalise }) {
   if (!cliente) return null
   const evolucao = [...meses].reverse().map(m => ({ label: formatMesLabel(m), valor: cliente[m] || 0 }))
   const status = getClienteStatus(cliente, diasBloqueio, diasInativacao)
@@ -100,6 +101,14 @@ function ClienteModal({ cliente, meses, diasBloqueio, diasInativacao, onClose })
             </div>
           </div>
 
+          <button
+            onClick={onOpenAnalise}
+            className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white shadow"
+            style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #10b981 130%)' }}
+          >
+            <Sparkles size={15} /> Abrir análise completa do cliente
+          </button>
+
           <div>
             <h3 className="text-sm font-semibold text-text-primary mb-3">Evolução 12 meses</h3>
             <ResponsiveContainer width="100%" height={200}>
@@ -127,9 +136,9 @@ export default function Clientes() {
   const [searchParams] = useSearchParams()
 
   const [search, setSearch] = useState('')
-  const [filterGr, setFilterGr] = useState(null)
+  const [filterGr, setFilterGr] = useState(searchParams.get('gr') || null)
   const [filterRca, setFilterRca] = useState(searchParams.get('rca') || null)
-  const [filterCidade, setFilterCidade] = useState(null)
+  const [filterCidade, setFilterCidade] = useState(searchParams.get('cidade') || null)
   const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || null)
   const [filterDias, setFilterDias] = useState(null)
   const [filterCurva, setFilterCurva] = useState(searchParams.get('curva') || null)
@@ -140,6 +149,8 @@ export default function Clientes() {
   // Sincroniza filtros com mudanças de searchParams (navegação vinda de outros componentes)
   useEffect(() => {
     setFilterStatus(searchParams.get('status') || null)
+    setFilterGr(searchParams.get('gr') || null)
+    setFilterCidade(searchParams.get('cidade') || null)
     setFilterRca(searchParams.get('rca') || null)
     setFilterCurva(searchParams.get('curva') || null)
     setFilterPositivado(searchParams.get('positivado') || null)
@@ -172,7 +183,8 @@ export default function Clientes() {
   }, [enrichedRows, filterGr])
   const cidades = useMemo(() => getCidades(enrichedRows).map(c => ({ value: c, label: c })), [enrichedRows])
 
-  const filtered = useMemo(() => {
+  // tudo menos o status — base dos cards (eles mostram a divisão da seleção atual)
+  const filteredSemStatus = useMemo(() => {
     let data = enrichedRows
     if (filterGr) data = data.filter(r => r.gr === filterGr)
     if (filterRca) data = data.filter(r => r.rca === Number(filterRca))
@@ -180,17 +192,24 @@ export default function Clientes() {
     if (search) data = data.filter(r =>
       r.razaoSocial.toLowerCase().includes(search.toLowerCase())
     )
-    if (filterStatus) data = data.filter(r => r._status === filterStatus)
     if (filterDias) data = data.filter(r => diasFiltro(r.diasUltCmp, filterDias))
     if (filterCurva) data = data.filter(r => r.curva === filterCurva)
     if (filterPositivado === 'sim') data = data.filter(r => (r[mesAtual] || 0) > 0)
     if (filterPositivado === 'nao') data = data.filter(r => (r[mesAtual] || 0) === 0)
     return data
-  }, [enrichedRows, filterGr, filterRca, filterCidade, search, filterStatus, filterDias, filterCurva, filterPositivado, mesAtual])
+  }, [enrichedRows, filterGr, filterRca, filterCidade, search, filterDias, filterCurva, filterPositivado, mesAtual])
 
-  const totalBase = enrichedRows.length
-  const totalAtivos = enrichedRows.filter(r => r._status === 'ativo').length
-  const totalInativos = enrichedRows.filter(r => r._status === 'inativo' || r._status === 'bloqueado').length
+  const filtered = useMemo(() => {
+    if (!filterStatus) return filteredSemStatus
+    if (filterStatus === 'inativos') return filteredSemStatus.filter(r => r._status === 'inativo' || r._status === 'bloqueado')
+    return filteredSemStatus.filter(r => r._status === filterStatus)
+  }, [filteredSemStatus, filterStatus])
+
+  // Cards acompanham os filtros aplicados (equipe, vendedor, cidade, dias, curva, busca)
+  const totalBase = filteredSemStatus.length
+  const totalAtivos = filteredSemStatus.filter(r => r._status === 'ativo').length
+  const totalInativos = filteredSemStatus.filter(r => r._status === 'inativo' || r._status === 'bloqueado').length
+  const temFiltro = !!(search || filterGr || filterRca || filterCidade || filterDias || filterCurva || filterPositivado)
   const limiteLiberado = filtered.reduce((s, r) => s + (r.limiteGlobal || 0), 0)
   const limiteUsado = filtered.reduce((s, r) => s + (r[mesAtual] || 0), 0)
   const limiteUsoPct = limiteLiberado > 0 ? (limiteUsado / limiteLiberado) * 100 : 0
@@ -235,15 +254,15 @@ export default function Clientes() {
 
       {/* Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <button onClick={clearFiltros} className="bg-bg-secondary border border-border-color rounded-xl p-4 text-left hover:border-accent-blue/50 transition-colors">
-          <p className="text-xs text-text-secondary mb-1">Total de Clientes</p>
+        <button onClick={() => { setFilterStatus(null); setPage(1) }} className={`bg-bg-secondary border rounded-xl p-4 text-left hover:border-accent-blue/50 transition-colors ${!filterStatus ? 'border-accent-blue/60' : 'border-border-color'}`}>
+          <p className="text-xs text-text-secondary mb-1">{temFiltro ? 'Clientes no filtro' : 'Total de Clientes'}</p>
           <p className="text-2xl font-bold text-text-primary">{totalBase.toLocaleString('pt-BR')}</p>
         </button>
-        <button onClick={() => { setFilterStatus('ativo'); setPage(1) }} className="bg-bg-secondary border border-border-color rounded-xl p-4 text-left hover:border-accent-green/50 transition-colors">
+        <button onClick={() => { setFilterStatus(filterStatus === 'ativo' ? null : 'ativo'); setPage(1) }} className={`bg-bg-secondary border rounded-xl p-4 text-left hover:border-accent-green/50 transition-colors ${filterStatus === 'ativo' ? 'border-accent-green/70' : 'border-border-color'}`}>
           <p className="text-xs text-text-secondary mb-1">Clientes Ativos</p>
           <p className="text-2xl font-bold text-accent-green">{totalAtivos.toLocaleString('pt-BR')}</p>
         </button>
-        <button onClick={() => navigate('/clientes/inativos')} className="bg-bg-secondary border border-border-color rounded-xl p-4 text-left hover:border-accent-amber/50 transition-colors">
+        <button onClick={() => { setFilterStatus(filterStatus === 'inativos' ? null : 'inativos'); setPage(1) }} className={`bg-bg-secondary border rounded-xl p-4 text-left hover:border-accent-amber/50 transition-colors ${filterStatus === 'inativos' ? 'border-accent-amber/70' : 'border-border-color'}`}>
           <p className="text-xs text-text-secondary mb-1">Inativos / Bloqueados</p>
           <p className="text-2xl font-bold text-accent-amber">{totalInativos.toLocaleString('pt-BR')}</p>
         </button>
@@ -292,7 +311,7 @@ export default function Clientes() {
                 const fat12M = meses.reduce((s, m) => s + (r[m] || 0), 0)
                 return (
                   <tr
-                    key={r.seqPessoa}
+                    key={`${r.seqPessoa}:${r.rca}`}
                     onClick={() => setSelected(r)}
                     className="border-b border-border-color/50 hover:bg-bg-tertiary/50 transition-colors cursor-pointer"
                   >
@@ -333,6 +352,7 @@ export default function Clientes() {
           diasBloqueio={diasBloqueio}
           diasInativacao={diasInativacao}
           onClose={() => setSelected(null)}
+          onOpenAnalise={() => navigate(`/explorar/cliente/${selected.seqPessoa}`)}
         />
       )}
     </div>

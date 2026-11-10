@@ -9,6 +9,7 @@ import { processExcelData, calcRanking, formatCurrency, formatMesLabel, exportEx
 import PageHeader from '../components/PageHeader'
 import { FiltrosBar, Select, SearchInput } from '../components/Filtros'
 import Pagination from '../components/Pagination'
+import { drillUrl } from '../lib/drill'
 
 const PAGE_SIZE = 20
 
@@ -109,7 +110,7 @@ export default function Ranking() {
             <XAxis type="number" tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} tick={{ fill: '#9ca3af', fontSize: 11 }} />
             <YAxis type="category" dataKey="nome" tick={{ fill: '#9ca3af', fontSize: 11 }} width={95} />
             <Tooltip formatter={v => [formatCurrency(v), 'Faturamento']} contentStyle={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 8 }} labelStyle={{ color: '#f9fafb' }} />
-            <Bar dataKey="fatMesSel" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+            <Bar dataKey="fatMesSel" fill="#3b82f6" radius={[0, 4, 4, 0]} onClick={d => navigate(`/explorar/vendedor/${d.payload?.rca ?? d.rca}`)} style={{ cursor: 'pointer' }} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -142,7 +143,9 @@ export default function Ranking() {
                 return (
                   <tr key={v.rca} className="border-b border-border-color/50 hover:bg-bg-tertiary/50 transition-colors">
                     <td className="px-4 py-3 text-text-secondary font-mono">{rank}</td>
-                    <td className="px-4 py-3 text-text-primary font-medium">{v.nome}</td>
+                    <td className="px-4 py-3 text-text-primary font-medium">
+                      <button onClick={() => navigate(`/explorar/vendedor/${v.rca}`)} className="hover:text-accent-blue hover:underline text-left">{v.nome}</button>
+                    </td>
                     <td className="px-4 py-3 text-text-secondary font-mono">{v.rca}</td>
                     <td className="px-4 py-3 text-text-secondary">{v.gr}</td>
                     <td className="px-4 py-3 font-mono text-text-primary">{formatCurrency(v.fatMesSel)}</td>
@@ -153,13 +156,13 @@ export default function Ranking() {
                     <td className="px-4 py-3 font-mono text-text-primary">{formatCurrency(v.total12M)}</td>
                     <td className="px-4 py-3 text-center">
                       <button
-                        onClick={() => navigate(`/clientes?rca=${v.rca}&status=ativo`)}
+                        onClick={() => navigate(drillUrl('/explorar/clientes', { gr: filterGr, rca: v.rca, status: 'ativo' }))}
                         className="text-accent-green font-mono hover:underline"
                       >{v.ativos}</button>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <button
-                        onClick={() => navigate(`/clientes?rca=${v.rca}&status=inativo`)}
+                        onClick={() => navigate(drillUrl('/explorar/clientes', { gr: filterGr, rca: v.rca, status: 'inativos' }))}
                         className="text-accent-amber font-mono hover:underline"
                       >{(v.inativos || 0) + (v.bloqueados || 0)}</button>
                     </td>

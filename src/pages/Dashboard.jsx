@@ -12,6 +12,7 @@ import {
 } from '../services/dataService'
 import KPICard from '../components/KPICard'
 import PageHeader from '../components/PageHeader'
+import { drillUrl } from '../lib/drill'
 import { FiltrosBar, Select } from '../components/Filtros'
 
 const CURVA_COLORS = { A: '#10b981', B: '#3b82f6', C: '#f59e0b' }
@@ -102,6 +103,8 @@ export default function Dashboard() {
   }
 
   const top5Max = top5[0]?.fatMesSel || 1
+  // todo clique leva os filtros de equipe/vendedor aplicados no Dashboard
+  const go = extra => navigate(drillUrl('/explorar/clientes', { gr: filterGr, rca: filterRca, ...extra }))
 
   const curvaData = curvaABC ? [
     { name: 'Curva A', value: curvaABC.A.count, pct: curvaABC.A.pct, key: 'A' },
@@ -150,13 +153,13 @@ export default function Dashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <button onClick={() => navigate('/clientes?status=ativo')} className="text-left">
+        <button onClick={() => go({ status: 'ativo' })} className="text-left" title="Ver estes clientes">
           <KPICard title="Clientes Ativos" value={kpis.ativos?.toLocaleString('pt-BR') || '0'} icon={UserCheck} iconColor="text-accent-green" />
         </button>
-        <button onClick={() => navigate('/clientes/inativos')} className="text-left">
+        <button onClick={() => go({ status: 'inativos' })} className="text-left" title="Ver estes clientes">
           <KPICard title="Clientes Inativos" value={((kpis.bloqueados || 0) + (kpis.inativos || 0)).toLocaleString('pt-BR')} icon={UserX} iconColor="text-accent-amber" />
         </button>
-        <div>
+        <button onClick={() => go({ positivado: 'sim' })} className="text-left" title="Ver os clientes que compraram no mês">
           <KPICard
             title="Fat. Mês Atual"
             value={formatCurrencyAbbr(kpis.fatMesAtual)}
@@ -164,8 +167,8 @@ export default function Dashboard() {
             iconColor="text-accent-blue"
             variacao={kpis.variacaoMensal}
           />
-        </div>
-        <div>
+        </button>
+        <button onClick={() => navigate(drillUrl('/explorar/vendedores', { gr: filterGr, rca: filterRca, positivado: 'sim' }))} className="text-left" title="Ver vendedores e seus tickets">
           <KPICard
             title="Ticket Médio"
             value={formatCurrencyAbbr(kpis.ticketMedio)}
@@ -173,7 +176,7 @@ export default function Dashboard() {
             icon={BarChart2}
             iconColor="text-accent-green"
           />
-        </div>
+        </button>
       </div>
 
       {/* Curva ABC + Positivação + Evolução */}
@@ -215,7 +218,7 @@ export default function Dashboard() {
                     innerRadius={40}
                     outerRadius={65}
                     dataKey="value"
-                    onClick={d => navigate(`/clientes?curva=${d.key}`)}
+                    onClick={d => go({ curva: d.payload?.key ?? d.key })}
                     style={{ cursor: 'pointer' }}
                   >
                     {curvaData.map(entry => (
@@ -234,7 +237,7 @@ export default function Dashboard() {
                 {curvaData.map(d => (
                   <button
                     key={d.key}
-                    onClick={() => navigate(`/clientes?curva=${d.key}`)}
+                    onClick={() => go({ curva: d.key })}
                     className="flex items-center justify-between w-full text-xs hover:bg-bg-tertiary rounded px-1 py-0.5 transition-colors"
                   >
                     <span className="flex items-center gap-2">
@@ -261,7 +264,7 @@ export default function Dashboard() {
                   innerRadius={50}
                   outerRadius={70}
                   dataKey="value"
-                  onClick={(_, idx) => navigate(idx === 0 ? '/clientes?positivado=sim' : '/clientes?positivado=nao')}
+                  onClick={(_, idx) => go({ positivado: idx === 0 ? 'sim' : 'nao' })}
                   style={{ cursor: 'pointer' }}
                 >
                   <Cell fill="#10b981" />
@@ -279,14 +282,14 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex gap-4 mt-1 text-xs">
-              <span className="flex items-center gap-1.5 text-text-secondary">
+              <button onClick={() => go({ positivado: 'sim' })} className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:underline">
                 <span className="w-2.5 h-2.5 rounded-full bg-accent-green" />
-                {kpis.positivados || 0} positivados
-              </span>
-              <span className="flex items-center gap-1.5 text-text-secondary">
+                {(kpis.positivados || 0).toLocaleString('pt-BR')} positivados
+              </button>
+              <button onClick={() => go({ positivado: 'nao' })} className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary hover:underline">
                 <span className="w-2.5 h-2.5 rounded-full bg-accent-red" />
-                {kpis.naoPositivados || 0} não
-              </span>
+                {(kpis.naoPositivados || 0).toLocaleString('pt-BR')} não
+              </button>
             </div>
           </div>
         </div>
@@ -326,7 +329,7 @@ export default function Dashboard() {
                   <tr key={v.rca} className="border-b border-border-color/30">
                     <td className="py-2 pr-4 text-text-secondary font-mono text-xs">#{i + 1}</td>
                     <td className="py-2 pr-4">
-                      <p className="text-text-primary font-medium truncate max-w-[130px]">{v.nome}</p>
+                      <button onClick={() => navigate(`/explorar/vendedor/${v.rca}`)} className="text-text-primary font-medium truncate max-w-[130px] block hover:text-accent-blue hover:underline text-left">{v.nome}</button>
                       <p className="text-text-secondary text-xs">RCA {v.rca}</p>
                     </td>
                     <td className="py-2 pr-4 font-mono text-text-primary whitespace-nowrap">{formatCurrencyAbbr(v.fatMesSel)}</td>
@@ -337,13 +340,13 @@ export default function Dashboard() {
                     </td>
                     <td className="py-2 pr-4 text-center">
                       <button
-                        onClick={() => navigate(`/clientes?rca=${v.rca}&status=ativo`)}
+                        onClick={() => go({ rca: v.rca, status: 'ativo' })}
                         className="text-accent-green font-mono hover:underline"
                       >{v.ativos}</button>
                     </td>
                     <td className="py-2 text-center">
                       <button
-                        onClick={() => navigate(`/clientes?rca=${v.rca}&status=inativo`)}
+                        onClick={() => go({ rca: v.rca, status: 'inativos' })}
                         className="text-accent-amber font-mono hover:underline"
                       >{(v.inativos || 0) + (v.bloqueados || 0)}</button>
                     </td>

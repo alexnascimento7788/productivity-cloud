@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react'
 import { Download, AlertCircle, Clock, CheckCircle2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth, useData, isStaff, filterRowsByRole } from '../App'
+import { drillUrl } from '../lib/drill'
 import { processExcelData, calcInativos, formatCurrency, exportCSV } from '../services/dataService'
 import KPICard from '../components/KPICard'
 import PageHeader from '../components/PageHeader'
@@ -35,6 +37,7 @@ export default function Inativos() {
   const { session } = useAuth()
   const { excelData } = useData()
   const isMaster = isStaff(session?.role)
+  const navigate = useNavigate()
 
   const [filterGr, setFilterGr] = useState(null)
   const [filterRca, setFilterRca] = useState(null)
@@ -82,6 +85,12 @@ export default function Inativos() {
     potencial: filtered.reduce((s, r) => s + r.mediaHist, 0),
   }), [filtered])
 
+  // "Inativos" desta aba = sem compra no mês atual; os cards abrem a análise com a mesma seleção
+  const goDrill = dias => navigate(drillUrl('/explorar/clientes', {
+    positivado: 'nao', gr: filterGr, rca: filterRca, cidade: filterCidade,
+    dias: [...new Set([filterDias, dias].filter(Boolean))].join(',') || null,
+  }))
+
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
@@ -119,10 +128,18 @@ export default function Inativos() {
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <KPICard title="Total Inativos" value={kpis.total.toLocaleString('pt-BR')} icon={AlertCircle} iconColor="text-accent-red" />
-        <KPICard title="1–30 dias" value={kpis.ate30.toLocaleString('pt-BR')} icon={CheckCircle2} iconColor="text-accent-green" />
-        <KPICard title="31–90 dias" value={kpis.de31a90.toLocaleString('pt-BR')} icon={Clock} iconColor="text-accent-amber" />
-        <KPICard title="90+ dias" value={kpis.acima90.toLocaleString('pt-BR')} icon={AlertCircle} iconColor="text-accent-red" />
+        <button onClick={() => goDrill(null)} className="text-left" title="Abrir análise destes clientes">
+          <KPICard title="Total Inativos" value={kpis.total.toLocaleString('pt-BR')} icon={AlertCircle} iconColor="text-accent-red" />
+        </button>
+        <button onClick={() => goDrill('0-30')} className="text-left" title="Abrir análise destes clientes">
+          <KPICard title="1–30 dias" value={kpis.ate30.toLocaleString('pt-BR')} icon={CheckCircle2} iconColor="text-accent-green" />
+        </button>
+        <button onClick={() => goDrill('31-90')} className="text-left" title="Abrir análise destes clientes">
+          <KPICard title="31–90 dias" value={kpis.de31a90.toLocaleString('pt-BR')} icon={Clock} iconColor="text-accent-amber" />
+        </button>
+        <button onClick={() => goDrill('90+')} className="text-left" title="Abrir análise destes clientes">
+          <KPICard title="90+ dias" value={kpis.acima90.toLocaleString('pt-BR')} icon={AlertCircle} iconColor="text-accent-red" />
+        </button>
         <KPICard title="Potencial Perdido" value={formatCurrency(kpis.potencial)} subtitle="Média histórica mensal dos inativos" />
       </div>
 
@@ -138,7 +155,7 @@ export default function Inativos() {
             </thead>
             <tbody>
               {paginated.map(r => (
-                <tr key={r.seqPessoa} className="border-b border-border-color/50 hover:bg-bg-tertiary/50 transition-colors">
+                <tr key={`${r.seqPessoa}:${r.rca}`} onClick={() => navigate(`/explorar/cliente/${r.seqPessoa}`)} className="border-b border-border-color/50 hover:bg-bg-tertiary/50 transition-colors cursor-pointer">
                   <td className="px-4 py-3 text-text-primary font-medium max-w-[200px] truncate">{r.razaoSocial}</td>
                   <td className="px-4 py-3 text-text-secondary">{r.nome}</td>
                   <td className="px-4 py-3 text-text-secondary">{r.cidade}</td>

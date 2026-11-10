@@ -240,7 +240,7 @@ export function calcEquipesData(rows, meses, equipesList, diasBloqueio = 90, dia
     const status = getClienteStatus(r, diasBloqueio, diasInativacao)
     if (status === 'ativo') e.ativos++
     else if (status === 'bloqueado') e.bloqueados++
-    else e.inativos++
+    else if (status === 'inativo') e.inativos++
     if ((r[mesAtual] || 0) > 0) e.positivados++
     e.fatMesAtual += r[mesAtual] || 0
     e.fat12M += meses.reduce((s, m) => s + (r[m] || 0), 0)
@@ -279,7 +279,7 @@ export function calcEquipeVendedores(rows, meses, gr, equipesList, diasBloqueio 
     const status = getClienteStatus(r, diasBloqueio, diasInativacao)
     if (status === 'ativo') v.ativos++
     else if (status === 'bloqueado') v.bloqueados++
-    else v.inativos++
+    else if (status === 'inativo') v.inativos++
     if ((r[mesAtual] || 0) > 0) v.positivados++
     v.fatMesAtual += r[mesAtual] || 0
     v.fat12M += meses.reduce((s, m) => s + (r[m] || 0), 0)
@@ -322,7 +322,7 @@ export function calcMapData(rows, meses, equipes, diasBloqueio = 90, diasInativa
     const status = getClienteStatus(r, diasBloqueio, diasInativacao)
     if (status === 'ativo') entry.ativos++
     else if (status === 'bloqueado') entry.bloqueados++
-    else entry.inativos++
+    else if (status === 'inativo') entry.inativos++
   })
 
   return [...map.values()]

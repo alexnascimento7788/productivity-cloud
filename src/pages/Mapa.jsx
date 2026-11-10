@@ -3,6 +3,8 @@ import { Maximize2, Minimize2, Layers, LocateFixed } from 'lucide-react'
 import { useAuth, useData, useParams, isStaff, filterRowsByRole } from '../App'
 import { processExcelData, calcMapData, formatCurrency } from '../services/dataService'
 import { FiltrosBar } from '../components/Filtros'
+import { useNavigate } from 'react-router-dom'
+import { drillUrl } from '../lib/drill'
 import PageHeader from '../components/PageHeader'
 
 let L = null
@@ -175,20 +177,25 @@ function MultiSelectEquipes({ equipes, selected, onChange }) {
 // Card fixo do lado direito com o detalhamento por vendedor de uma equipe+cidade.
 // Aberto/fechado por clique no pin (nunca por hover) — não mexe na posição do mapa.
 function TeamDetailPanel({ group, color, onClose }) {
+  const navigate = useNavigate()
   if (!group) return null
+  const go = extra => navigate(drillUrl('/explorar/clientes', { gr: group.gr, cidade: group.cidade, ...extra }))
   return (
     <div className="absolute top-4 right-4 z-[1500] bg-bg-secondary/95 border border-border-color rounded-xl shadow-xl backdrop-blur-sm w-[290px] max-h-[calc(100%-2rem)] overflow-hidden flex flex-col animate-fade-in">
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border-color">
         <div className="min-w-0">
           <p className="text-sm font-bold text-text-primary truncate">{group.equipeNome}</p>
-          <p className="text-xs text-text-secondary truncate">{group.cidade} · {group.vendedores.length} vendedor{group.vendedores.length > 1 ? 'es' : ''}</p>
+          <p className="text-xs text-text-secondary truncate">
+            <button onClick={() => navigate(drillUrl(`/explorar/municipio/${encodeURIComponent(group.cidade)}`, { gr: group.gr }))} className="hover:text-accent-blue hover:underline">{group.cidade}</button>
+            {' · '}{group.vendedores.length} vendedor{group.vendedores.length > 1 ? 'es' : ''}
+          </p>
         </div>
         <button onClick={onClose} className="shrink-0 text-text-secondary/50 hover:text-text-secondary text-sm leading-none">✕</button>
       </div>
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border-color text-xs flex-wrap">
-        <span className="text-accent-green">🟢 {group.ativos}</span>
-        <span className="text-accent-amber">🟡 {group.bloqueados}</span>
-        <span className="text-accent-red">🔴 {group.inativos}</span>
+        <button onClick={() => go({ status: 'ativo' })} className="text-accent-green hover:underline">🟢 {group.ativos}</button>
+        <button onClick={() => go({ status: 'bloqueado' })} className="text-accent-amber hover:underline">🟡 {group.bloqueados}</button>
+        <button onClick={() => go({ status: 'inativo' })} className="text-accent-red hover:underline">🔴 {group.inativos}</button>
         <span className="text-text-primary font-semibold ml-auto">{formatCurrency(group.fatMesAtual)}</span>
       </div>
       <div className="overflow-y-auto p-3 space-y-3">
@@ -196,11 +203,11 @@ function TeamDetailPanel({ group, color, onClose }) {
           const tm = v.ativos > 0 ? v.fatMesAtual / v.ativos : 0
           return (
             <div key={v.rca} className="pl-2.5" style={{ borderLeft: `2px solid ${color}` }}>
-              <p className="text-xs font-semibold text-text-primary">[{v.rca}] {v.nome}</p>
+              <button onClick={() => navigate(`/explorar/vendedor/${v.rca}`)} className="text-xs font-semibold text-text-primary hover:text-accent-blue hover:underline text-left">[{v.rca}] {v.nome}</button>
               <p className="text-[11px] text-text-secondary flex items-center gap-2 flex-wrap mt-0.5">
-                <span className="text-accent-green">🟢 {v.ativos}</span>
-                <span className="text-accent-amber">🟡 {v.bloqueados}</span>
-                <span className="text-accent-red">🔴 {v.inativos}</span>
+                <button onClick={() => go({ rca: v.rca, status: 'ativo' })} className="text-accent-green hover:underline">🟢 {v.ativos}</button>
+                <button onClick={() => go({ rca: v.rca, status: 'bloqueado' })} className="text-accent-amber hover:underline">🟡 {v.bloqueados}</button>
+                <button onClick={() => go({ rca: v.rca, status: 'inativo' })} className="text-accent-red hover:underline">🔴 {v.inativos}</button>
                 <span>· {formatCurrency(v.fatMesAtual)}</span>
                 <span>· méd {formatCurrency(tm)}</span>
               </p>

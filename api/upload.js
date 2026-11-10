@@ -90,7 +90,7 @@ module.exports = async function handler(req, res) {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
     if (authErr || !user) {
       console.error('[auth] getUser falhou:', authErr?.status, authErr?.message)
-      return res.status(401).json({ error: 'Token inválido ou expirado' + (authErr?.message ? ` (${authErr.message})` : '') })
+      return res.status(401).json({ error: 'Sua sessão expirou. Saia e entre novamente.' })
     }
 
     // ── 2. Verificar role admin e obter company_id ────────────────────────────────

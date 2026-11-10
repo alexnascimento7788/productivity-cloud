@@ -17,10 +17,17 @@ import Parametros from './pages/Parametros'
 import Master from './pages/Master'
 import Importar from './pages/Importar'
 import TrocarSenha from './pages/TrocarSenha'
+import ExplorarClientes from './pages/explorar/ExplorarClientes'
+import ExplorarCliente from './pages/explorar/ExplorarCliente'
+import ExplorarVendedores from './pages/explorar/ExplorarVendedores'
+import ExplorarVendedor from './pages/explorar/ExplorarVendedor'
+import ExplorarMunicipios from './pages/explorar/ExplorarMunicipios'
+import ExplorarMunicipio from './pages/explorar/ExplorarMunicipio'
 import Layout from './components/Layout'
 import { supabase } from './lib/supabaseClient'
 import { logoutUser, getSession } from './services/authService'
 import { loadCompanyData } from './lib/dataLoader'
+import { markSessionStart, staleSessionReason, setLogoutReason, startSessionGuard } from './lib/sessionGuard'
 
 export const AuthContext = createContext(null)
 export const DataContext = createContext(null)
@@ -86,10 +93,20 @@ export default function App() {
   }
 
   useEffect(() => {
-    getSession().then(s => {
-      if (s) setSession(s)
+    (async () => {
+      const s = await getSession()
+      if (s) {
+        // sessão salva de um navegador fechado ou parado há muito tempo → descarta
+        const reason = staleSessionReason()
+        if (reason) {
+          setLogoutReason(reason)
+          await logoutUser()
+        } else {
+          setSession(s)
+        }
+      }
       setAuthLoading(false)
-    })
+    })()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, authSession) => {
       if (event === 'SIGNED_OUT') {
@@ -107,7 +124,10 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const login = (sessionData) => setSession(sessionData)
+  const login = (sessionData) => {
+    markSessionStart()
+    setSession(sessionData)
+  }
 
   const logout = async () => {
     await logoutUser()
@@ -116,6 +136,15 @@ export default function App() {
     setCompanies([])
     setActiveCompanyId(null)
   }
+
+  // Inatividade (30 min) e batimento da aba — ver lib/sessionGuard.js
+  useEffect(() => {
+    if (!session?.id) return
+    return startSessionGuard(reason => {
+      setLogoutReason(reason)
+      logout()
+    })
+  }, [session?.id])
 
   // sessão atualizada localmente (ex.: após trocar a senha do 1º acesso)
   const updateSession = (patch) => setSession(s => (s ? { ...s, ...patch } : s))
@@ -255,6 +284,13 @@ export default function App() {
                   <Route path="master" element={<PrivateRoute masterOnly><Master /></PrivateRoute>} />
                   <Route path="sql" element={<PrivateRoute masterOnly><SqlConsole /></PrivateRoute>} />
                   <Route path="parametros" element={<PrivateRoute elevated><Parametros /></PrivateRoute>} />
+                  {/* Páginas de análise (fora do menu): destino dos números clicáveis */}
+                  <Route path="explorar/clientes" element={<ExplorarClientes />} />
+                  <Route path="explorar/cliente/:seq" element={<ExplorarCliente />} />
+                  <Route path="explorar/vendedores" element={<ExplorarVendedores />} />
+                  <Route path="explorar/vendedor/:rca" element={<ExplorarVendedor />} />
+                  <Route path="explorar/municipios" element={<ExplorarMunicipios />} />
+                  <Route path="explorar/municipio/:cidade" element={<ExplorarMunicipio />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/login" replace />} />
               </Routes>

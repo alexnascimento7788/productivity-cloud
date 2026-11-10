@@ -13,6 +13,33 @@ function getSupabase() {
   )
 }
 
+
+// Lista recursivamente todos os arquivos de {company_id}/ no bucket planilhas
+// (o list() do Storage não desce em subpastas como {company_id}/geo/).
+async function listFilesRecursive(supabase, prefix) {
+  const out = []
+  const PAGE = 1000
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error } = await supabase.storage.from('planilhas').list(prefix, { limit: PAGE, offset })
+    if (error) throw new Error('storage: ' + error.message)
+    for (const item of data || []) {
+      const path = `${prefix}/${item.name}`
+      if (item.id == null) out.push(...await listFilesRecursive(supabase, path)) // pasta
+      else out.push(path)
+    }
+    if (!data || data.length < PAGE) break
+  }
+  return out
+}
+
+async function removeCompanyFiles(supabase, companyId) {
+  const paths = await listFilesRecursive(supabase, companyId)
+  for (let i = 0; i < paths.length; i += 100) {
+    const { error } = await supabase.storage.from('planilhas').remove(paths.slice(i, i + 100))
+    if (error) console.warn('Storage remove warning:', error.message)
+  }
+}
+
 module.exports = async function handler(req, res) {
   // ── 1. Auth ──────────────────────────────────────────────────────────────────
   const token = (req.headers.authorization || '').replace('Bearer ', '').trim()
@@ -27,7 +54,7 @@ module.exports = async function handler(req, res) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token)
   if (authErr || !user) {
       console.error('[auth] getUser falhou:', authErr?.status, authErr?.message)
-      return res.status(401).json({ error: 'Token inválido ou expirado' + (authErr?.message ? ` (${authErr.message})` : '') })
+      return res.status(401).json({ error: 'Sua sessão expirou. Saia e entre novamente.' })
     }
 
   const { data: perfil } = await supabase
@@ -127,7 +154,8 @@ module.exports = async function handler(req, res) {
 
   // ── wipe_company_data ────────────────────────────────────────────────────────
   // Apaga TODA a base importada da empresa: vendas, clientes, vendedores,
-  // equipes, de/para de cidades e histórico de imports. Depois do wipe a
+  // equipes, de/para de cidades, geo Vendas Cidades e histórico de imports
+  // (inclusive os arquivos em subpastas do Storage, ex.: {company_id}/geo/). Depois do wipe a
   // empresa fica zerada; um novo import recria equipes e de/para do zero.
   if (req.method === 'POST' && action === 'wipe_company_data') {
     const { company_id } = body
@@ -141,17 +169,16 @@ module.exports = async function handler(req, res) {
     if (!company) return res.status(404).json({ error: 'Empresa não encontrada' })
 
     try {
-      for (const table of ['vendas_mensais', 'ultima_compra', 'clientes', 'vendedores', 'cidades_depara', 'equipes']) {
+      // geo_vendas_cidades antes de geo_setores_rotas (FK)
+      for (const table of [
+        'vendas_mensais', 'ultima_compra', 'clientes', 'vendedores', 'cidades_depara', 'equipes',
+        'geo_vendas_cidades', 'geo_setores_rotas', 'uploads_geo',
+      ]) {
         const { error } = await supabase.from(table).delete().eq('company_id', company_id)
         if (error) throw new Error(`${table}: ${error.message}`)
       }
 
-      const { data: files } = await supabase.storage.from('planilhas').list(company_id)
-      if (files?.length) {
-        const paths = files.map(f => `${company_id}/${f.name}`)
-        const { error: removeErr } = await supabase.storage.from('planilhas').remove(paths)
-        if (removeErr) console.warn('Storage remove warning:', removeErr.message)
-      }
+      await removeCompanyFiles(supabase, company_id)
 
       const { error: uploadsErr } = await supabase.from('uploads').delete().eq('company_id', company_id)
       if (uploadsErr) throw new Error('uploads: ' + uploadsErr.message)
@@ -241,12 +268,7 @@ module.exports = async function handler(req, res) {
         .select('user_id')
         .eq('company_id', company_id)
 
-      const { data: files } = await supabase.storage.from('planilhas').list(company_id)
-      if (files?.length) {
-        const paths = files.map(f => `${company_id}/${f.name}`)
-        const { error: removeErr } = await supabase.storage.from('planilhas').remove(paths)
-        if (removeErr) console.warn('Storage remove warning:', removeErr.message)
-      }
+      await removeCompanyFiles(supabase, company_id)
 
       for (const p of perfisEmpresa || []) {
         const { error: delUserErr } = await supabase.auth.admin.deleteUser(p.user_id)

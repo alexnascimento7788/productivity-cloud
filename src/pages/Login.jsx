@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, TrendingUp, Loader2, BarChart3, Trophy, MapPin } from 'lucide-react'
 import { useAuth } from '../App'
 import { loginUser } from '../services/authService'
+import { peekLogoutReason, clearLogoutReason, LOGOUT_MESSAGES } from '../lib/sessionGuard'
 
 const features = [
   { icon: BarChart3, label: 'Dashboards em tempo real' },
@@ -17,6 +18,8 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [notice] = useState(() => LOGOUT_MESSAGES[peekLogoutReason()] || '')
+  useEffect(() => { clearLogoutReason() }, [])
   const { session, login } = useAuth()
   const navigate = useNavigate()
 
@@ -94,6 +97,12 @@ export default function Login() {
                 </button>
               </div>
             </div>
+
+            {notice && !error && (
+              <div className="animate-fade-in bg-accent-blue/10 border border-accent-blue/30 text-accent-blue text-sm rounded-lg px-4 py-2.5">
+                {notice}
+              </div>
+            )}
 
             {error && (
               <div className="animate-fade-in bg-accent-red/10 border border-accent-red/30 text-accent-red text-sm rounded-lg px-4 py-2.5">

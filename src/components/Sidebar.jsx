@@ -271,6 +271,45 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
               <p className="text-sm font-bold text-text-primary">SIXHours</p>
             </div>
 
+            {/* Versão 4.11 */}
+            <div className="px-4 py-4 border-b border-border-color">
+              <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.11</p>
+              <ul className="space-y-2 text-xs text-text-secondary">
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Páginas de análise:</span> novas telas de Clientes, Vendedores e Municípios (fora do menu), abertas ao clicar em qualquer número do Dashboard, Equipes, Ranking, Inativos e Mapa — com gráficos, mapa, tendência e exportação</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Filtro exato:</span> o número clicado é exatamente o que aparece: clicar em 3 clientes ativos mostra só esses 3, mantendo equipe/vendedor filtrados na origem</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Análise do cliente:</span> nota de saúde (0–100), dias até bloquear, compras mês a mês, comparação com o município e a carteira do vendedor, e próxima ação sugerida</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Perfil do vendedor:</span> ranking na equipe, evolução contra a média da equipe, lista de ataque (clientes com histórico escapando) e território no mapa</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Municípios:</span> mapa da seleção, oportunidade do mês (quem ainda não comprou), vendedores e equipes atuando</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Clientes:</span> os cards agora acompanham os filtros aplicados; novo filtro "Inativo + Bloqueado" e botão para abrir a análise completa do cliente</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Sessão:</span> encerra após 30 minutos sem uso e pede login de novo ao reabrir o navegador</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-accent-green mt-0.5 flex-shrink-0">✓</span>
+                  <span><span className="text-text-primary font-medium">Correções:</span> "Apagar base" agora também apaga os dados e arquivos de Vendas Cidades; clientes monitorados não são mais contados como inativos em Equipes e no Mapa; mensagem de sessão expirada mais clara</span>
+                </li>
+              </ul>
+            </div>
+
             {/* Versão 4.10.2 */}
             <div className="px-4 py-4 border-b border-border-color">
               <p className="text-xs font-semibold text-accent-blue mb-3">Versão Cloud 4.10.2</p>

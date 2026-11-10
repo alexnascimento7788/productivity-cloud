@@ -8,6 +8,7 @@ import {
 } from '../services/dataService'
 import PageHeader from '../components/PageHeader'
 import { FiltrosBar, Select } from '../components/Filtros'
+import { drillUrl } from '../lib/drill'
 
 export default function Equipes() {
   const { session } = useAuth()
@@ -129,24 +130,24 @@ function EquipeCard({ equipe, rows, meses, equipesList, diasBloqueio, diasInativ
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <Stat icon="👤" label="Vendedores" value={equipe.vendedoresCount} />
-          <Stat icon="🏙️" label="Municípios" value={equipe.municipiosCount} />
+          <StatLink icon="👤" label="Vendedores" value={equipe.vendedoresCount} onClick={() => navigate(drillUrl('/explorar/vendedores', { gr: equipe.gr }))} />
+          <StatLink icon="🏙️" label="Municípios" value={equipe.municipiosCount} onClick={() => navigate(drillUrl('/explorar/municipios', { gr: equipe.gr }))} />
           <StatLink
             icon="👥" label="Total Clientes" value={equipe.totalClientes}
-            onClick={() => navigate(`/clientes?gr=${equipe.gr}`)}
+            onClick={() => navigate(drillUrl('/explorar/clientes', { gr: equipe.gr }))}
           />
           <div className="bg-bg-tertiary rounded-lg p-2.5 text-xs">
             <span className="text-text-secondary block mb-1">Status</span>
             <div className="space-y-0.5">
-              <button onClick={() => navigate(`/clientes?gr=${equipe.gr}&status=ativo`)} className="flex justify-between w-full hover:text-accent-green text-text-primary">
+              <button onClick={() => navigate(drillUrl('/explorar/clientes', { gr: equipe.gr, status: 'ativo' }))} className="flex justify-between w-full hover:text-accent-green text-text-primary">
                 <span className="text-text-secondary">🟢 Ativos</span>
                 <span className="font-semibold">{equipe.ativos}</span>
               </button>
-              <button onClick={() => navigate(`/clientes?gr=${equipe.gr}&status=bloqueado`)} className="flex justify-between w-full hover:text-accent-amber text-text-primary">
+              <button onClick={() => navigate(drillUrl('/explorar/clientes', { gr: equipe.gr, status: 'bloqueado' }))} className="flex justify-between w-full hover:text-accent-amber text-text-primary">
                 <span className="text-text-secondary">🟡 Bloqueados</span>
                 <span className="font-semibold">{equipe.bloqueados}</span>
               </button>
-              <button onClick={() => navigate(`/clientes?gr=${equipe.gr}&status=inativo`)} className="flex justify-between w-full hover:text-accent-red text-text-primary">
+              <button onClick={() => navigate(drillUrl('/explorar/clientes', { gr: equipe.gr, status: 'inativo' }))} className="flex justify-between w-full hover:text-accent-red text-text-primary">
                 <span className="text-text-secondary">🔴 Inativos</span>
                 <span className="font-semibold">{equipe.inativos}</span>
               </button>
@@ -198,17 +199,21 @@ function EquipeCard({ equipe, rows, meses, equipesList, diasBloqueio, diasInativ
               <tbody>
                 {vendedores.map(v => (
                   <tr key={v.rca} className="border-b border-border-color/30 hover:bg-bg-tertiary/30">
-                    <td className="px-3 py-2 text-text-primary font-medium truncate max-w-[120px]">{v.nome}</td>
+                    <td className="px-3 py-2 text-text-primary font-medium truncate max-w-[120px]">
+                      <button onClick={() => navigate(`/explorar/vendedor/${v.rca}`)} className="hover:text-accent-blue hover:underline text-left truncate max-w-full">{v.nome}</button>
+                    </td>
                     <td className="px-3 py-2 text-text-secondary font-mono">{v.rca}</td>
-                    <td className="px-3 py-2 text-text-secondary">{v.municipiosCount}</td>
                     <td className="px-3 py-2 text-text-secondary">
-                      <button onClick={() => navigate(`/clientes?rca=${v.rca}`)} className="hover:underline">{v.totalClientes}</button>
+                      <button onClick={() => navigate(drillUrl('/explorar/municipios', { gr: equipe.gr, rca: v.rca }))} className="hover:underline">{v.municipiosCount}</button>
+                    </td>
+                    <td className="px-3 py-2 text-text-secondary">
+                      <button onClick={() => navigate(drillUrl('/explorar/clientes', { gr: equipe.gr, rca: v.rca }))} className="hover:underline">{v.totalClientes}</button>
                     </td>
                     <td className="px-3 py-2">
-                      <button onClick={() => navigate(`/clientes?rca=${v.rca}&status=ativo`)} className="text-accent-green hover:underline">{v.ativos}</button>
+                      <button onClick={() => navigate(drillUrl('/explorar/clientes', { gr: equipe.gr, rca: v.rca, status: 'ativo' }))} className="text-accent-green hover:underline">{v.ativos}</button>
                     </td>
                     <td className="px-3 py-2">
-                      <button onClick={() => navigate(`/clientes?rca=${v.rca}&status=inativo`)} className="text-accent-amber hover:underline">{v.inativos + v.bloqueados}</button>
+                      <button onClick={() => navigate(drillUrl('/explorar/clientes', { gr: equipe.gr, rca: v.rca, status: 'inativos' }))} className="text-accent-amber hover:underline">{v.inativos + v.bloqueados}</button>
                     </td>
                     <td className="px-3 py-2 text-text-primary font-mono">{formatCurrencyAbbr(v.fatMesAtual)}</td>
                     <td className="px-3 py-2 text-text-secondary font-mono">{formatCurrencyAbbr(v.fat12M)}</td>
