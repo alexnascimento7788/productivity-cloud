@@ -91,10 +91,16 @@ export default function App() {
       setAuthLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, authSession) => {
       if (event === 'SIGNED_OUT') {
         setSession(null)
         setExcelData(null)
+        return
+      }
+      // O Supabase renova o JWT sozinho (~1h); sem isso session.token fica
+      // vencido e as chamadas /api/* devolvem "Token inválido ou expirado".
+      if (authSession?.access_token) {
+        setSession(s => (s && s.token !== authSession.access_token ? { ...s, token: authSession.access_token } : s))
       }
     })
 
